@@ -1,46 +1,296 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    >
+
+    <meta
+        name="theme-color"
+        content="#ffffff"
+    >
 
     <title>My Chat</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
 </head>
 
 <body>
 
 <div class="app">
 
-    <header class="header">
-        <div>
-            <div class="title">My Chat</div>
-            <div id="status" class="status">
-                Подключение...
+    <!-- =========================
+         SIDEBAR
+    ========================== -->
+
+    <aside
+        class="sidebar"
+        id="sidebar"
+    >
+
+        <div class="sidebar-header">
+
+            <button
+                class="icon-button mobile-only"
+                id="closeSidebar"
+                aria-label="Закрыть меню"
+            >
+                ☰
+            </button>
+
+            <div class="brand">
+
+                <div class="brand-icon">
+                    ✈
+                </div>
+
+                <div>
+
+                    <div class="brand-title">
+                        My Chat
+                    </div>
+
+                    <div class="brand-subtitle">
+                        Мессенджер
+                    </div>
+
+                </div>
+
             </div>
+
         </div>
-    </header>
 
-    <main id="messages" class="messages"></main>
 
-    <form id="messageForm" class="input-area">
+        <!-- ПОИСК -->
 
-        <input
-            id="messageInput"
-            type="text"
-            placeholder="Написать сообщение..."
-            maxlength="1000"
-            autocomplete="off"
+        <div class="search-box">
+
+            <span class="search-icon">
+                ⌕
+            </span>
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Поиск"
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <!-- СПИСОК ЧАТОВ -->
+
+        <div class="chat-list">
+
+            <button
+                class="chat-item active"
+                id="chatItem"
+            >
+
+                <div class="avatar">
+                    C
+                </div>
+
+                <div class="chat-info">
+
+                    <div class="chat-top">
+
+                        <span class="chat-name">
+                            Общий чат
+                        </span>
+
+                        <span
+                            class="chat-time"
+                            id="lastTime"
+                        ></span>
+
+                    </div>
+
+                    <div
+                        class="chat-preview"
+                        id="chatPreview"
+                    >
+                        Пока сообщений нет
+                    </div>
+
+                </div>
+
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <!-- Затемнение мобильного меню -->
+
+    <div
+        class="sidebar-overlay"
+        id="sidebarOverlay"
+    ></div>
+
+
+    <!-- =========================
+         CHAT
+    ========================== -->
+
+    <main class="chat">
+
+        <!-- HEADER -->
+
+        <header class="chat-header">
+
+            <button
+                class="icon-button mobile-only"
+                id="openSidebar"
+                aria-label="Открыть меню"
+            >
+                ☰
+            </button>
+
+
+            <div class="header-avatar">
+                C
+            </div>
+
+
+            <div class="header-info">
+
+                <div class="header-name">
+                    Общий чат
+                </div>
+
+                <div
+                    id="status"
+                    class="header-status"
+                >
+                    Подключение...
+                </div>
+
+            </div>
+
+
+            <div class="header-actions">
+
+                <button
+                    class="icon-button"
+                    title="Поиск"
+                >
+                    ⌕
+                </button>
+
+                <button
+                    class="icon-button"
+                    title="Ещё"
+                >
+                    ⋮
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <!-- СООБЩЕНИЯ -->
+
+        <section
+            id="messages"
+            class="messages"
+            aria-live="polite"
+        ></section>
+
+
+        <!-- =========================
+             EMOJI
+        ========================== -->
+
+        <div
+            class="emoji-panel"
+            id="emojiPanel"
         >
 
-        <button type="submit">
-            Отправить
-        </button>
+            <button type="button">😀</button>
+            <button type="button">😂</button>
+            <button type="button">🤣</button>
+            <button type="button">😊</button>
+            <button type="button">😍</button>
+            <button type="button">😎</button>
+            <button type="button">👍</button>
+            <button type="button">❤️</button>
+            <button type="button">🔥</button>
+            <button type="button">🎉</button>
+            <button type="button">🤔</button>
+            <button type="button">😭</button>
+            <button type="button">💀</button>
+            <button type="button">😡</button>
+            <button type="button">🚀</button>
+            <button type="button">✨</button>
 
-    </form>
+        </div>
+
+
+        <!-- =========================
+             INPUT
+        ========================== -->
+
+        <form
+            id="messageForm"
+            class="composer"
+        >
+
+            <button
+                type="button"
+                class="composer-button"
+                id="emojiButton"
+                title="Эмодзи"
+            >
+                ☺
+            </button>
+
+
+            <input
+                id="messageInput"
+                type="text"
+                placeholder="Сообщение"
+                maxlength="1000"
+                autocomplete="off"
+            >
+
+
+            <button
+                type="button"
+                class="composer-button attachment-button"
+                title="Прикрепить файл"
+            >
+                📎
+            </button>
+
+
+            <button
+                type="submit"
+                class="send-button"
+                aria-label="Отправить"
+                title="Отправить"
+            >
+                ➤
+            </button>
+
+        </form>
+
+    </main>
 
 </div>
+
 
 <script src="app.js"></script>
 
