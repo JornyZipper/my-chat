@@ -12,7 +12,7 @@
 
     <meta
         name="theme-color"
-        content="#eef4fa"
+        content="#edf4fb"
     >
 
     <meta
@@ -43,18 +43,22 @@
 
 <div class="app">
 
-    <!-- =========================================
+
+    <!-- =================================================
          SIDEBAR
-    ========================================== -->
+    ================================================== -->
 
     <aside
-        class="sidebar"
+        class="sidebar glass"
         id="sidebar"
     >
 
         <div class="sidebar-top">
 
-            <div class="profile">
+
+            <!-- PROFILE -->
+
+            <div class="profile-card">
 
                 <div
                     class="profile-avatar"
@@ -63,27 +67,45 @@
                     ?
                 </div>
 
-                <div class="profile-info">
 
-                    <div
-                        class="profile-name"
-                        id="profileName"
-                    >
-                        Загрузка...
+                <div class="profile-main">
+
+                    <div class="profile-name-line">
+
+                        <span
+                            id="profileDisplayName"
+                        >
+                            Пользователь
+                        </span>
+
+                        <span
+                            class="verified-badge hidden"
+                            id="profileVerified"
+                            title="Подтверждённый профиль"
+                        >
+                            ✓
+                        </span>
+
                     </div>
 
-                    <div class="profile-status">
-                        Мой профиль
+
+                    <div
+                        class="profile-username"
+                        id="profileUsername"
+                    >
+                        @username
                     </div>
 
                 </div>
 
+
                 <button
-                    class="close-button"
-                    id="closeSidebar"
+                    class="round-button"
+                    id="settingsButton"
                     type="button"
+                    aria-label="Настройки"
                 >
-                    ×
+                    ⚙
                 </button>
 
             </div>
@@ -99,9 +121,10 @@
 
                 <input
                     id="searchInput"
-                    type="text"
-                    placeholder="Найти по нику"
+                    type="search"
+                    placeholder="Найти по нику или имени"
                     autocomplete="off"
+                    enterkeyhint="search"
                 >
 
             </div>
@@ -109,12 +132,14 @@
         </div>
 
 
-        <!-- USERS -->
+        <!-- USERS TITLE -->
 
-        <div class="users-title">
+        <div class="section-title">
             Пользователи
         </div>
 
+
+        <!-- USERS -->
 
         <div
             class="user-list"
@@ -122,7 +147,7 @@
         >
 
             <div class="empty-users">
-                Никого пока нет
+                Пока никого нет
             </div>
 
         </div>
@@ -138,22 +163,25 @@
     ></div>
 
 
-    <!-- =========================================
-         MAIN CHAT
-    ========================================== -->
+    <!-- =================================================
+         MAIN
+    ================================================== -->
 
     <main class="chat">
+
 
         <!-- HEADER -->
 
         <header
             class="chat-header glass"
+            id="chatHeader"
         >
 
             <button
                 class="header-button"
                 id="openSidebar"
                 type="button"
+                aria-label="Открыть меню"
             >
                 ☰
             </button>
@@ -173,14 +201,15 @@
                     class="header-name"
                     id="headerName"
                 >
-                    Выберите пользователя
+                    Личные сообщения
                 </div>
+
 
                 <div
                     class="header-status"
                     id="status"
                 >
-                    Найдите человека по нику
+                    Выберите пользователя
                 </div>
 
             </div>
@@ -188,8 +217,9 @@
 
             <button
                 class="header-button"
-                type="button"
                 id="headerSearchButton"
+                type="button"
+                aria-label="Поиск"
             >
                 ⌕
             </button>
@@ -197,9 +227,7 @@
         </header>
 
 
-        <!-- =====================================
-             EMPTY SCREEN
-        ====================================== -->
+        <!-- EMPTY -->
 
         <section
             class="empty-screen"
@@ -210,14 +238,18 @@
                 ✈
             </div>
 
+
             <div class="empty-title">
                 Личные сообщения
             </div>
 
+
             <div class="empty-text">
-                Найдите пользователя по нику,
-                чтобы начать переписку.
+                Найдите человека по нику
+                или имени и начните
+                переписку.
             </div>
+
 
             <button
                 class="find-button"
@@ -230,9 +262,7 @@
         </section>
 
 
-        <!-- =====================================
-             MESSAGES
-        ====================================== -->
+        <!-- MESSAGES -->
 
         <section
             class="messages hidden"
@@ -240,9 +270,7 @@
         ></section>
 
 
-        <!-- =====================================
-             EMOJI
-        ====================================== -->
+        <!-- EMOJI -->
 
         <div
             class="emoji-panel glass"
@@ -277,9 +305,7 @@
         </div>
 
 
-        <!-- =====================================
-             COMPOSER
-        ====================================== -->
+        <!-- COMPOSER -->
 
         <form
             class="composer glass hidden"
@@ -300,8 +326,9 @@
                 id="messageInput"
                 type="text"
                 maxlength="4000"
-                autocomplete="off"
                 placeholder="Сообщение"
+                autocomplete="off"
+                enterkeyhint="send"
             >
 
 
@@ -324,12 +351,256 @@
 
         </form>
 
+
     </main>
 
-</div>
 
+    <!-- =================================================
+         SETTINGS MODAL
+    ================================================== -->
+
+    <div
+        class="modal-backdrop hidden"
+        id="settingsBackdrop"
+    >
+
+        <section
+            class="settings-modal glass"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settingsTitle"
+        >
+
+
+            <!-- SETTINGS HEADER -->
+
+            <div class="settings-header">
+
+                <div>
+
+                    <div
+                        class="settings-title"
+                        id="settingsTitle"
+                    >
+                        Настройки
+                    </div>
+
+                    <div class="settings-subtitle">
+                        Профиль и внешний вид
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="round-button"
+                    id="closeSettings"
+                    type="button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <!-- PROFILE -->
+
+            <div class="settings-profile">
+
+                <div class="avatar-editor">
+
+                    <div
+                        class="big-avatar"
+                        id="settingsAvatar"
+                    >
+                        ?
+                    </div>
+
+
+                    <label
+                        class="avatar-change"
+                    >
+
+                        Изменить фото
+
+                        <input
+                            type="file"
+                            id="avatarInput"
+                            accept="image/*"
+                            hidden
+                        >
+
+                    </label>
+
+                </div>
+
+
+                <div class="settings-profile-info">
+
+                    <div
+                        class="settings-profile-name"
+                        id="settingsProfileName"
+                    >
+                        Пользователь
+                    </div>
+
+                    <div
+                        class="settings-profile-username"
+                        id="settingsProfileUsername"
+                    >
+                        @username
+                    </div>
+
+                    <div
+                        class="settings-verified hidden"
+                        id="settingsVerified"
+                    >
+                        ✓ Подтверждённый профиль
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- FORM -->
+
+            <div class="settings-section">
+
+                <div class="settings-label">
+                    Имя
+                </div>
+
+                <input
+                    class="settings-input"
+                    id="displayNameInput"
+                    type="text"
+                    maxlength="40"
+                    placeholder="Твоё имя"
+                >
+
+
+                <div class="settings-label">
+                    Username
+                </div>
+
+                <div class="username-input-wrapper">
+
+                    <span>@</span>
+
+                    <input
+                        class="settings-input username-input"
+                        id="usernameInput"
+                        type="text"
+                        maxlength="24"
+                        placeholder="username"
+                        autocapitalize="none"
+                        autocomplete="off"
+                    >
+
+                </div>
+
+
+                <div class="settings-hint">
+                    От 2 до 24 символов: буквы, цифры, точка, "_" и "-".
+                </div>
+
+            </div>
+
+
+            <!-- APPEARANCE -->
+
+            <div class="settings-section">
+
+                <div class="settings-label">
+                    Тема
+                </div>
+
+
+                <div class="theme-buttons">
+
+                    <button
+                        class="theme-button"
+                        id="lightThemeButton"
+                        type="button"
+                    >
+                        ☀ Светлая
+                    </button>
+
+
+                    <button
+                        class="theme-button"
+                        id="darkThemeButton"
+                        type="button"
+                    >
+                        ◐ Тёмная
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- GLASS -->
+
+            <div class="settings-section">
+
+                <div class="setting-row">
+
+                    <div>
+
+                        <div class="setting-title">
+                            Стеклянный интерфейс
+                        </div>
+
+                        <div class="setting-description">
+                            Прозрачные панели и размытие
+                        </div>
+
+                    </div>
+
+
+                    <label class="switch">
+
+                        <input
+                            type="checkbox"
+                            id="glassToggle"
+                        >
+
+                        <span class="switch-slider"></span>
+
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <!-- BUTTON -->
+
+            <button
+                class="save-profile-button"
+                id="saveProfileButton"
+                type="button"
+            >
+                Сохранить изменения
+            </button>
+
+
+            <div
+                class="settings-error"
+                id="settingsError"
+            ></div>
+
+        </section>
+
+    </div>
+
+
+</div>
 
 <script src="app.js"></script>
 
 </body>
+
 </html>
