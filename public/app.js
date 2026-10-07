@@ -5,7 +5,9 @@ ELEMENTS
 */
 
 const sidebar =
-    document.getElementById("sidebar");
+    document.getElementById(
+        "sidebar"
+    );
 
 const sidebarOverlay =
     document.getElementById(
@@ -132,6 +134,11 @@ const findButton =
         "findButton"
     );
 
+const headerSearchButton =
+    document.getElementById(
+        "headerSearchButton"
+    );
+
 const headerAvatar =
     document.getElementById(
         "headerAvatar"
@@ -172,9 +179,34 @@ const emojiPanel =
         "emojiPanel"
     );
 
-const headerSearchButton =
+
+/*
+LOGIN
+*/
+
+const loginOverlay =
     document.getElementById(
-        "headerSearchButton"
+        "loginOverlay"
+    );
+
+const loginDisplayName =
+    document.getElementById(
+        "loginDisplayName"
+    );
+
+const loginUsername =
+    document.getElementById(
+        "loginUsername"
+    );
+
+const loginButton =
+    document.getElementById(
+        "loginButton"
+    );
+
+const loginError =
+    document.getElementById(
+        "loginError"
     );
 
 
@@ -205,7 +237,7 @@ if (isIOS) {
 
 /*
 =====================================================
-PROFILE STORAGE
+PROFILE
 =====================================================
 */
 
@@ -229,23 +261,23 @@ function makeId() {
 }
 
 
-function getProfile() {
+function getSavedProfile() {
 
     try {
 
-        const saved =
+        const value =
             localStorage.getItem(
                 "my_chat_profile"
             );
 
 
-        if (!saved) {
+        if (!value) {
             return null;
         }
 
 
         return JSON.parse(
-            saved
+            value
         );
 
     } catch {
@@ -255,64 +287,29 @@ function getProfile() {
 }
 
 
-function saveProfile(profile) {
+function saveProfile(
+    value
+) {
 
     localStorage.setItem(
         "my_chat_profile",
         JSON.stringify(
-            profile
+            value
         )
     );
 }
 
 
-let profile =
-    getProfile();
-
-
 /*
-=====================================================
-INITIAL PROFILE
-=====================================================
+Не создаём Guest.
+Пустой профиль вызывает форму входа.
 */
 
+let profile =
+    getSavedProfile();
+
+
 if (!profile) {
-
-    const nickname =
-        prompt(
-            "Придумай свой @username\n\nНапример: Z1pperJ"
-        );
-
-
-    let safeNickname =
-        String(
-            nickname ||
-            "User" +
-                Math.floor(
-                    Math.random() *
-                    9999
-                )
-        )
-            .trim()
-            .replace(
-                /[^a-zA-Zа-яА-ЯёЁ0-9_.-]/g,
-                ""
-            )
-            .slice(0, 24);
-
-
-    if (
-        safeNickname.length < 2
-    ) {
-
-        safeNickname =
-            "User" +
-            Math.floor(
-                Math.random() *
-                9999
-            );
-    }
-
 
     profile = {
 
@@ -320,10 +317,10 @@ if (!profile) {
             makeId(),
 
         nickname:
-            safeNickname,
+            "",
 
         displayName:
-            safeNickname,
+            "",
 
         avatar:
             ""
@@ -355,7 +352,9 @@ const savedGlass =
     );
 
 
-function applyTheme(theme) {
+function applyTheme(
+    theme
+) {
 
     document.body.classList.toggle(
         "dark",
@@ -381,11 +380,6 @@ function applyTheme(theme) {
     );
 
 
-    /*
-    Меняем mobile browser
-    theme-color.
-    */
-
     const meta =
         document.querySelector(
             'meta[name="theme-color"]'
@@ -404,7 +398,9 @@ function applyTheme(theme) {
 }
 
 
-function applyGlass(enabled) {
+function applyGlass(
+    enabled
+) {
 
     document.body.classList.toggle(
         "no-glass",
@@ -439,22 +435,41 @@ applyGlass(
 
 /*
 =====================================================
-UI PROFILE
+STATE
 =====================================================
 */
 
-function isVerified() {
+let socket =
+    null;
 
-    return (
-        normalize(
-            profile.nickname
-        ) ===
-        "z1ipperj"
-    );
-}
+let reconnectDelay =
+    1000;
+
+let users =
+    [];
+
+let currentUser =
+    null;
+
+let typingTimer =
+    null;
+
+let remoteTypingTimer =
+    null;
+
+let typingSent =
+    false;
 
 
-function normalize(value) {
+/*
+=====================================================
+PROFILE UI
+=====================================================
+*/
+
+function normalize(
+    value
+) {
 
     return String(
         value || ""
@@ -464,7 +479,9 @@ function normalize(value) {
 }
 
 
-function firstLetter(value) {
+function firstLetter(
+    value
+) {
 
     const text =
         String(
@@ -523,23 +540,21 @@ function setAvatarElement(
 function updateProfileUI() {
 
     const verified =
-        isVerified();
+        normalize(
+            profile.nickname
+        ) ===
+        "z1ipperj";
 
 
     profileDisplayName.textContent =
-        profile.displayName;
+        profile.displayName ||
+        "Пользователь";
 
 
     profileUsername.textContent =
-        "@" +
-        profile.nickname;
-
-
-    setAvatarElement(
-        profileAvatar,
-        profile.avatar,
-        profile.displayName
-    );
+        profile.nickname
+            ? "@" + profile.nickname
+            : "@username";
 
 
     profileVerified.classList.toggle(
@@ -549,12 +564,14 @@ function updateProfileUI() {
 
 
     settingsProfileName.textContent =
-        profile.displayName;
+        profile.displayName ||
+        "Пользователь";
 
 
     settingsProfileUsername.textContent =
-        "@" +
-        profile.nickname;
+        profile.nickname
+            ? "@" + profile.nickname
+            : "@username";
 
 
     settingsVerified.classList.toggle(
@@ -564,52 +581,138 @@ function updateProfileUI() {
 
 
     displayNameInput.value =
-        profile.displayName;
+        profile.displayName || "";
 
 
     usernameInput.value =
-        profile.nickname;
+        profile.nickname || "";
+
+
+    setAvatarElement(
+        profileAvatar,
+        profile.avatar,
+        profile.displayName ||
+            profile.nickname
+    );
 
 
     setAvatarElement(
         settingsAvatar,
         profile.avatar,
-        profile.displayName
+        profile.displayName ||
+            profile.nickname
     );
 
 
-    /*
-    Если открыт собственный профиль
-    */
+    if (currentUser) {
 
-    if (
-        !currentUser
-    ) {
-        return;
+        updateChatHeader();
     }
 }
 
 
 /*
 =====================================================
-WEBSOCKET
+LOGIN UI
 =====================================================
 */
 
-let socket = null;
+function showLogin() {
 
-let reconnectDelay =
-    1000;
+    loginOverlay.classList.remove(
+        "hidden"
+    );
 
-let users = [];
 
-let currentUser = null;
+    loginDisplayName.value =
+        profile.displayName || "";
 
-let typingTimer = null;
 
-let remoteTypingTimer = null;
+    loginUsername.value =
+        profile.nickname || "";
 
-let typingSent = false;
+
+    loginError.textContent =
+        "";
+
+
+    setTimeout(
+        () => {
+
+            if (
+                !loginUsername.value
+            ) {
+
+                loginUsername.focus();
+
+            } else {
+
+                loginDisplayName.focus();
+            }
+
+        },
+        50
+    );
+}
+
+
+function hideLogin() {
+
+    loginOverlay.classList.add(
+        "hidden"
+    );
+}
+
+
+/*
+=====================================================
+SEND LOGIN
+=====================================================
+*/
+
+function sendLogin() {
+
+    if (
+        !profile.displayName ||
+        !profile.nickname
+    ) {
+
+        showLogin();
+
+        return;
+    }
+
+
+    if (
+        !socket ||
+        socket.readyState !==
+            WebSocket.OPEN
+    ) {
+
+        return;
+    }
+
+
+    socket.send(
+        JSON.stringify({
+
+            type:
+                "login",
+
+            id:
+                profile.id,
+
+            nickname:
+                profile.nickname,
+
+            displayName:
+                profile.displayName,
+
+            avatar:
+                profile.avatar
+        })
+    );
+}
 
 
 /*
@@ -621,13 +724,12 @@ CONNECT
 function connect() {
 
     statusElement.textContent =
-        currentUser
-            ? "подключение..."
-            : "подключение...";
+        "подключение…";
 
 
     const protocol =
-        location.protocol === "https:"
+        location.protocol ===
+        "https:"
             ? "wss:"
             : "ws:";
 
@@ -646,25 +748,18 @@ function connect() {
                 1000;
 
 
-            socket.send(
-                JSON.stringify({
+            if (
+                !profile.displayName ||
+                !profile.nickname
+            ) {
 
-                    type:
-                        "login",
+                showLogin();
 
-                    id:
-                        profile.id,
+                return;
+            }
 
-                    nickname:
-                        profile.nickname,
 
-                    displayName:
-                        profile.displayName,
-
-                    avatar:
-                        profile.avatar
-                })
-            );
+            sendLogin();
         }
     );
 
@@ -679,8 +774,16 @@ function connect() {
         "close",
         () => {
 
-            statusElement.textContent =
-                "соединение потеряно";
+            if (
+                currentUser &&
+                !statusElement.classList.contains(
+                    "typing-status"
+                )
+            ) {
+
+                statusElement.textContent =
+                    "соединение потеряно";
+            }
 
 
             setTimeout(
@@ -715,7 +818,7 @@ function connect() {
 
 /*
 =====================================================
-SOCKET DATA
+SOCKET MESSAGE
 =====================================================
 */
 
@@ -733,7 +836,7 @@ function handleSocketMessage(
 
         /*
         =============================================
-        LOGIN
+        LOGIN OK
         =============================================
         */
 
@@ -742,15 +845,28 @@ function handleSocketMessage(
             "login_ok"
         ) {
 
-            profile =
-                normalizeProfile(
-                    data.profile
-                );
+            profile = {
+
+                id:
+                    data.profile.id,
+
+                nickname:
+                    data.profile.nickname,
+
+                displayName:
+                    data.profile.displayName,
+
+                avatar:
+                    data.profile.avatar || ""
+            };
 
 
             saveProfile(
                 profile
             );
+
+
+            hideLogin();
 
 
             updateProfileUI();
@@ -780,11 +896,13 @@ function handleSocketMessage(
             "login_error"
         ) {
 
-            settingsError.textContent =
+            loginError.textContent =
                 data.error ||
-                "Ошибка входа.";
+                "Не удалось войти.";
 
-            openSettings();
+
+            showLogin();
+
 
             return;
         }
@@ -792,7 +910,7 @@ function handleSocketMessage(
 
         /*
         =============================================
-        PROFILE
+        PROFILE OK
         =============================================
         */
 
@@ -801,10 +919,20 @@ function handleSocketMessage(
             "profile_ok"
         ) {
 
-            profile =
-                normalizeProfile(
-                    data.profile
-                );
+            profile = {
+
+                id:
+                    data.profile.id,
+
+                nickname:
+                    data.profile.nickname,
+
+                displayName:
+                    data.profile.displayName,
+
+                avatar:
+                    data.profile.avatar || ""
+            };
 
 
             saveProfile(
@@ -820,26 +948,6 @@ function handleSocketMessage(
 
 
             renderUsers();
-
-
-            if (currentUser) {
-
-                const found =
-                    users.find(
-                        user =>
-                            user.id ===
-                            currentUser.id
-                    );
-
-
-                if (found) {
-
-                    currentUser =
-                        found;
-
-                    updateChatHeader();
-                }
-            }
 
 
             return;
@@ -859,7 +967,8 @@ function handleSocketMessage(
 
             settingsError.textContent =
                 data.error ||
-                "Не удалось сохранить профиль.";
+                "Не удалось сохранить изменения.";
+
 
             return;
         }
@@ -880,8 +989,11 @@ function handleSocketMessage(
                 data.users || [];
 
 
-            renderUsers();
-
+            /*
+            Очень важно:
+            если пользователь уже открыт,
+            обновляем именно его объект.
+            */
 
             if (currentUser) {
 
@@ -897,6 +1009,29 @@ function handleSocketMessage(
 
                     currentUser =
                         updated;
+                }
+            }
+
+
+            renderUsers();
+
+
+            /*
+            Сразу обновляем header.
+            */
+
+            if (currentUser) {
+
+                /*
+                Не трогаем typing,
+                если он активен.
+                */
+
+                if (
+                    !statusElement.classList.contains(
+                        "typing-status"
+                    )
+                ) {
 
                     updateChatHeader();
                 }
@@ -965,11 +1100,17 @@ function handleSocketMessage(
                 data.message;
 
 
+            /*
+            Сообщение относится
+            к открытому чату?
+            */
+
             const relevant =
                 currentUser &&
                 (
                     message.fromId ===
                         currentUser.id ||
+
                     message.toId ===
                         currentUser.id
                 );
@@ -987,8 +1128,8 @@ function handleSocketMessage(
 
 
             /*
-            Если это наше сообщение —
-            выключаем typing.
+            Если это наше сообщение,
+            typing отключаем.
             */
 
             if (
@@ -1035,12 +1176,22 @@ function handleSocketMessage(
             ) {
 
                 statusElement.textContent =
-                    "печатает…";
+                    "печатает";
+
+
+                statusElement.classList.add(
+                    "typing-status"
+                );
 
 
                 remoteTypingTimer =
                     setTimeout(
                         () => {
+
+                            statusElement.classList.remove(
+                                "typing-status"
+                            );
+
 
                             updateChatHeader();
 
@@ -1049,6 +1200,11 @@ function handleSocketMessage(
                     );
 
             } else {
+
+                statusElement.classList.remove(
+                    "typing-status"
+                );
+
 
                 updateChatHeader();
             }
@@ -1061,6 +1217,7 @@ function handleSocketMessage(
     } catch (error) {
 
         console.error(
+            "Socket data error:",
             error
         );
     }
@@ -1069,38 +1226,95 @@ function handleSocketMessage(
 
 /*
 =====================================================
-PROFILE NORMALIZE
+CURRENT STATUS
 =====================================================
 */
 
-function normalizeProfile(
-    incoming
-) {
+function getCurrentUserStatus() {
 
-    return {
+    if (!currentUser) {
 
-        id:
-            incoming.id ||
-            profile.id,
+        return "Выберите пользователя";
+    }
 
-        nickname:
-            incoming.nickname ||
-            profile.nickname,
 
-        displayName:
-            incoming.displayName ||
-            incoming.nickname ||
-            profile.displayName,
+    return currentUser.online
+        ? "в сети"
+        : "не в сети";
+}
 
-        avatar:
-            incoming.avatar ||
+
+/*
+=====================================================
+HEADER
+=====================================================
+*/
+
+function updateChatHeader() {
+
+    if (!currentUser) {
+
+        headerName.textContent =
+            "Личные сообщения";
+
+
+        statusElement.textContent =
+            "Выберите пользователя";
+
+
+        statusElement.classList.remove(
+            "typing-status"
+        );
+
+
+        setAvatarElement(
+            headerAvatar,
             "",
+            "?"
+        );
 
-        verified:
-            Boolean(
-                incoming.verified
-            )
-    };
+
+        return;
+    }
+
+
+    /*
+    Имя
+    */
+
+    headerName.textContent =
+        currentUser.displayName +
+        (
+            currentUser.verified
+                ? "  ✓"
+                : ""
+        );
+
+
+    /*
+    Статус
+    */
+
+    if (
+        !statusElement.classList.contains(
+            "typing-status"
+        )
+    ) {
+
+        statusElement.textContent =
+            getCurrentUserStatus();
+    }
+
+
+    /*
+    Аватар
+    */
+
+    setAvatarElement(
+        headerAvatar,
+        currentUser.avatar,
+        currentUser.displayName
+    );
 }
 
 
@@ -1115,16 +1329,30 @@ function renderUsers() {
     const query =
         searchInput.value
             .trim()
+            .replace(
+                /^@/,
+                ""
+            )
             .toLowerCase();
 
 
     const filtered =
         users
+
+            /*
+            Себя не показываем.
+            */
+
             .filter(
                 user =>
                     user.id !==
                     profile.id
             )
+
+            /*
+            Поиск по имени И username.
+            */
+
             .filter(
                 user => {
 
@@ -1134,17 +1362,20 @@ function renderUsers() {
 
 
                     return (
+
                         normalize(
                             user.nickname
                         ).includes(
                             query
                         ) ||
 
+
                         normalize(
                             user.displayName
                         ).includes(
                             query
                         )
+
                     );
                 }
             );
@@ -1155,7 +1386,8 @@ function renderUsers() {
 
 
     if (
-        filtered.length === 0
+        filtered.length ===
+        0
     ) {
 
         const empty =
@@ -1197,7 +1429,7 @@ function renderUsers() {
 
 /*
 =====================================================
-CREATE USER ITEM
+CREATE USER
 =====================================================
 */
 
@@ -1286,6 +1518,10 @@ function createUserItem(
         "user-info";
 
 
+    /*
+    NAME
+    */
+
     const nameLine =
         document.createElement(
             "div"
@@ -1296,24 +1532,28 @@ function createUserItem(
         "user-name-line";
 
 
-    const displayName =
+    const name =
         document.createElement(
             "div"
         );
 
 
-    displayName.className =
+    name.className =
         "user-name";
 
 
-    displayName.textContent =
+    name.textContent =
         user.displayName;
 
 
     nameLine.appendChild(
-        displayName
+        name
     );
 
+
+    /*
+    VERIFIED
+    */
 
     if (
         user.verified
@@ -1339,6 +1579,10 @@ function createUserItem(
     }
 
 
+    /*
+    USERNAME
+    */
+
     const nickname =
         document.createElement(
             "div"
@@ -1353,6 +1597,10 @@ function createUserItem(
         "@" +
         user.nickname;
 
+
+    /*
+    STATUS
+    */
 
     const status =
         document.createElement(
@@ -1374,9 +1622,11 @@ function createUserItem(
         nameLine
     );
 
+
     info.appendChild(
         nickname
     );
+
 
     info.appendChild(
         status
@@ -1387,10 +1637,15 @@ function createUserItem(
         avatar
     );
 
+
     button.appendChild(
         info
     );
 
+
+    /*
+    OPEN CHAT
+    */
 
     button.addEventListener(
         "click",
@@ -1442,13 +1697,22 @@ function openChat(
         "";
 
 
-    updateChatHeader();
-
-
     clearTimeout(
         remoteTypingTimer
     );
 
+
+    statusElement.classList.remove(
+        "typing-status"
+    );
+
+
+    updateChatHeader();
+
+
+    /*
+    Запрашиваем историю.
+    */
 
     if (
         socket &&
@@ -1483,69 +1747,6 @@ function openChat(
 
 
     renderUsers();
-}
-
-
-/*
-=====================================================
-CHAT HEADER
-=====================================================
-*/
-
-function getCurrentUserStatus() {
-
-    if (!currentUser) {
-
-        return "Выберите пользователя";
-    }
-
-
-    return currentUser.online
-        ? "в сети"
-        : "не в сети";
-}
-
-
-function updateChatHeader() {
-
-    if (!currentUser) {
-
-        headerName.textContent =
-            "Личные сообщения";
-
-        statusElement.textContent =
-            "Выберите пользователя";
-
-
-        setAvatarElement(
-            headerAvatar,
-            "",
-            "?"
-        );
-
-
-        return;
-    }
-
-
-    headerName.textContent =
-        currentUser.displayName +
-        (
-            currentUser.verified
-                ? "  ✓"
-                : ""
-        );
-
-
-    statusElement.textContent =
-        getCurrentUserStatus();
-
-
-    setAvatarElement(
-        headerAvatar,
-        currentUser.avatar,
-        currentUser.displayName
-    );
 }
 
 
@@ -1694,6 +1895,7 @@ function addMessage(
         text
     );
 
+
     bubble.appendChild(
         meta
     );
@@ -1712,7 +1914,7 @@ function addMessage(
 
 /*
 =====================================================
-SEND
+SEND MESSAGE
 =====================================================
 */
 
@@ -1793,6 +1995,7 @@ messageInput.addEventListener(
             socket.readyState !==
                 WebSocket.OPEN
         ) {
+
             return;
         }
 
@@ -1891,13 +2094,16 @@ SEARCH
 
 searchInput.addEventListener(
     "input",
-    renderUsers
+    () => {
+
+        renderUsers();
+    }
 );
 
 
 /*
 =====================================================
-MOBILE SIDEBAR
+SIDEBAR
 =====================================================
 */
 
@@ -1906,6 +2112,7 @@ function openSidebar() {
     sidebar.classList.add(
         "open"
     );
+
 
     sidebarOverlay.classList.add(
         "visible"
@@ -1918,6 +2125,7 @@ function closeSidebar() {
     sidebar.classList.remove(
         "open"
     );
+
 
     sidebarOverlay.classList.remove(
         "visible"
@@ -2043,7 +2251,7 @@ settingsBackdrop.addEventListener(
 
 /*
 =====================================================
-THEME BUTTONS
+THEME
 =====================================================
 */
 
@@ -2113,7 +2321,7 @@ avatarInput.addEventListener(
         ) {
 
             settingsError.textContent =
-                "Нужен файл изображения.";
+                "Выберите изображение.";
 
             return;
         }
@@ -2139,7 +2347,7 @@ avatarInput.addEventListener(
 
 
             settingsError.textContent =
-                "Фото выбрано. Нажми «Сохранить изменения».";
+                "Фото выбрано. Нажмите «Сохранить изменения».";
 
         } catch {
 
@@ -2152,7 +2360,7 @@ avatarInput.addEventListener(
 
 /*
 =====================================================
-RESIZE IMAGE
+IMAGE RESIZE
 =====================================================
 */
 
@@ -2173,11 +2381,11 @@ function resizeImage(
             reader.onload =
                 () => {
 
-                    const img =
+                    const image =
                         new Image();
 
 
-                    img.onload =
+                    image.onload =
                         () => {
 
                             const max =
@@ -2185,15 +2393,15 @@ function resizeImage(
 
 
                             let width =
-                                img.width;
+                                image.width;
 
                             let height =
-                                img.height;
+                                image.height;
 
 
                             if (
                                 width >
-                                    height
+                                height
                             ) {
 
                                 if (
@@ -2252,18 +2460,13 @@ function resizeImage(
 
 
                             ctx.drawImage(
-                                img,
+                                image,
                                 0,
                                 0,
                                 width,
                                 height
                             );
 
-
-                            /*
-                            WebP поддерживается
-                            современными браузерами.
-                            */
 
                             resolve(
                                 canvas.toDataURL(
@@ -2274,11 +2477,11 @@ function resizeImage(
                         };
 
 
-                    img.onerror =
+                    image.onerror =
                         reject;
 
 
-                    img.src =
+                    image.src =
                         reader.result;
                 };
 
@@ -2325,12 +2528,21 @@ saveProfileButton.addEventListener(
                 .slice(0, 24);
 
 
+        if (!displayName) {
+
+            settingsError.textContent =
+                "Введите имя.";
+
+            return;
+        }
+
+
         if (
             nickname.length < 2
         ) {
 
             settingsError.textContent =
-                "Username слишком короткий.";
+                "Введите username.";
 
             return;
         }
@@ -2350,64 +2562,10 @@ saveProfileButton.addEventListener(
 
 
         if (
-            !displayName
-        ) {
-
-            settingsError.textContent =
-                "Введите имя.";
-
-            return;
-        }
-
-
-        /*
-        Обновляем локально,
-        но сервер подтверждает
-        изменение username.
-        */
-
-        const newProfile = {
-
-            ...profile,
-
-            nickname:
-
-                nickname,
-
-            displayName:
-
-                displayName,
-
-            avatar:
-
-                profile.avatar || ""
-        };
-
-
-        if (
-            socket &&
-            socket.readyState ===
+            !socket ||
+            socket.readyState !==
                 WebSocket.OPEN
         ) {
-
-            socket.send(
-                JSON.stringify({
-
-                    type:
-                        "update_profile",
-
-                    nickname:
-                        nickname,
-
-                    displayName:
-                        displayName,
-
-                    avatar:
-                        newProfile.avatar
-                })
-            );
-
-        } else {
 
             settingsError.textContent =
                 "Нет соединения с сервером.";
@@ -2416,12 +2574,101 @@ saveProfileButton.addEventListener(
         }
 
 
-        /*
-        Локально тоже сохраняем.
-        */
+        socket.send(
+            JSON.stringify({
 
-        profile =
-            newProfile;
+                type:
+                    "update_profile",
+
+                nickname:
+                    nickname,
+
+                displayName:
+                    displayName,
+
+                avatar:
+                    profile.avatar || ""
+            })
+        );
+    }
+);
+
+
+/*
+=====================================================
+LOGIN
+=====================================================
+*/
+
+loginButton.addEventListener(
+    "click",
+    () => {
+
+        loginError.textContent =
+            "";
+
+
+        const displayName =
+            loginDisplayName.value
+                .trim()
+                .slice(0, 40);
+
+
+        const nickname =
+            loginUsername.value
+                .trim()
+                .replace(
+                    /^@/,
+                    ""
+                )
+                .slice(0, 24);
+
+
+        if (!displayName) {
+
+            loginError.textContent =
+                "Введите имя.";
+
+            loginDisplayName.focus();
+
+            return;
+        }
+
+
+        if (
+            nickname.length < 2
+        ) {
+
+            loginError.textContent =
+                "Введите username.";
+
+            loginUsername.focus();
+
+            return;
+        }
+
+
+        if (
+            !/^[\p{L}\p{N}_.-]+$/u.test(
+                nickname
+            )
+        ) {
+
+            loginError.textContent =
+                "Username содержит недопустимые символы.";
+
+            loginUsername.focus();
+
+            return;
+        }
+
+
+        profile.displayName =
+            displayName;
+
+
+        profile.nickname =
+            nickname;
 
 
         saveProfile(
@@ -2429,7 +2676,55 @@ saveProfileButton.addEventListener(
         );
 
 
-        updateProfileUI();
+        if (
+            socket &&
+            socket.readyState ===
+                WebSocket.OPEN
+        ) {
+
+            sendLogin();
+
+        } else {
+
+            loginError.textContent =
+                "Нет соединения с сервером.";
+        }
+    }
+);
+
+
+/*
+=====================================================
+LOGIN ENTER
+=====================================================
+*/
+
+loginDisplayName.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key ===
+            "Enter"
+        ) {
+
+            loginUsername.focus();
+        }
+    }
+);
+
+
+loginUsername.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key ===
+            "Enter"
+        ) {
+
+            loginButton.click();
+        }
     }
 );
 
@@ -2530,7 +2825,7 @@ document.addEventListener(
 
 /*
 =====================================================
-SWIPE MENU
+SWIPE SIDEBAR
 =====================================================
 */
 
