@@ -1,166 +1,710 @@
-const messagesContainer = document.getElementById("messages");
-const input = document.getElementById("messageInput");
-const form = document.getElementById("messageForm");
-const statusElement = document.getElementById("status");
+const messagesContainer =
+    document.getElementById("messages");
 
-// Имя пользователя
-let username = localStorage.getItem("chat_username");
+const input =
+    document.getElementById("messageInput");
+
+const form =
+    document.getElementById("messageForm");
+
+const statusElement =
+    document.getElementById("status");
+
+const chatPreview =
+    document.getElementById("chatPreview");
+
+const lastTime =
+    document.getElementById("lastTime");
+
+const sidebar =
+    document.getElementById("sidebar");
+
+const sidebarOverlay =
+    document.getElementById("sidebarOverlay");
+
+const openSidebarButton =
+    document.getElementById("openSidebar");
+
+const closeSidebarButton =
+    document.getElementById("closeSidebar");
+
+const emojiButton =
+    document.getElementById("emojiButton");
+
+const emojiPanel =
+    document.getElementById("emojiPanel");
+
+const searchInput =
+    document.getElementById("searchInput");
+
+const chatItem =
+    document.getElementById("chatItem");
+
+
+/* =====================================================
+   USERNAME
+===================================================== */
+
+let username =
+    localStorage.getItem("chat_username");
 
 if (!username) {
-    username = prompt("Как тебя зовут?");
 
-    if (!username || !username.trim()) {
+    username =
+        prompt("Как тебя зовут?");
+
+    if (
+        !username ||
+        !username.trim()
+    ) {
         username = "Guest";
     }
 
-    username = username.trim().slice(0, 30);
+    username =
+        username
+            .trim()
+            .slice(0, 30);
 
-    localStorage.setItem("chat_username", username);
+    localStorage.setItem(
+        "chat_username",
+        username
+    );
 }
 
+
+/* =====================================================
+   SOCKET
+===================================================== */
+
 let socket = null;
+
 let reconnectDelay = 1000;
+
+
+/* =====================================================
+   CONNECT
+===================================================== */
 
 function connect() {
 
-    statusElement.textContent = "Подключение...";
+    statusElement.textContent =
+        "подключение...";
 
-    // Автоматически выбираем ws или wss
+
     const protocol =
         location.protocol === "https:"
             ? "wss:"
             : "ws:";
 
-    socket = new WebSocket(
-        `${protocol}//${location.host}/ws`
+
+    const socketUrl =
+        `${protocol}//${location.host}/ws`;
+
+
+    socket =
+        new WebSocket(socketUrl);
+
+
+    /* CONNECTED */
+
+    socket.addEventListener(
+        "open",
+        () => {
+
+            console.log(
+                "WebSocket connected"
+            );
+
+            statusElement.textContent =
+                "в сети";
+
+            reconnectDelay = 1000;
+        }
     );
 
-    socket.addEventListener("open", () => {
 
-        console.log("Connected");
+    /* MESSAGE */
 
-        statusElement.textContent =
-            `В сети • ${username}`;
+    socket.addEventListener(
+        "message",
+        (event) => {
 
-        reconnectDelay = 1000;
-    });
+            try {
 
-    socket.addEventListener("message", (event) => {
+                const data =
+                    JSON.parse(
+                        event.data
+                    );
 
-        try {
 
-            const data = JSON.parse(event.data);
+                /* HISTORY */
 
-            if (data.type === "history") {
+                if (
+                    data.type ===
+                    "history"
+                ) {
 
-                messagesContainer.innerHTML = "";
+                    messagesContainer.innerHTML =
+                        "";
 
-                data.messages.forEach(addMessage);
 
-                scrollToBottom();
+                    data.messages.forEach(
+                        (message) => {
+                            addMessage(
+                                message
+                            );
+                        }
+                    );
+
+
+                    const last =
+                        data.messages[
+                            data.messages.length - 1
+                        ];
+
+
+                    updateChatPreview(
+                        last
+                    );
+
+
+                    scrollToBottom();
+                }
+
+
+                /* NEW MESSAGE */
+
+                if (
+                    data.type ===
+                    "message"
+                ) {
+
+                    addMessage(
+                        data.message
+                    );
+
+
+                    updateChatPreview(
+                        data.message
+                    );
+
+
+                    scrollToBottom();
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Message parsing error:",
+                    error
+                );
             }
-
-            if (data.type === "message") {
-
-                addMessage(data.message);
-
-                scrollToBottom();
-            }
-
-        } catch (error) {
-            console.error(error);
         }
+    );
 
-    });
 
-    socket.addEventListener("close", () => {
+    /* CLOSED */
 
-        statusElement.textContent =
-            "Соединение потеряно. Переподключение...";
+    socket.addEventListener(
+        "close",
+        () => {
 
-        setTimeout(() => {
+            statusElement.textContent =
+                "переподключение...";
 
-            connect();
 
-            reconnectDelay =
-                Math.min(reconnectDelay * 2, 10000);
+            setTimeout(
+                () => {
 
-        }, reconnectDelay);
+                    connect();
 
-    });
 
-    socket.addEventListener("error", () => {
-        console.log("WebSocket error");
-    });
+                    reconnectDelay =
+                        Math.min(
+                            reconnectDelay * 2,
+                            10000
+                        );
+
+                },
+                reconnectDelay
+            );
+        }
+    );
+
+
+    /* ERROR */
+
+    socket.addEventListener(
+        "error",
+        () => {
+
+            console.log(
+                "WebSocket error"
+            );
+
+            statusElement.textContent =
+                "ошибка соединения";
+        }
+    );
 }
+
+
+/* =====================================================
+   ADD MESSAGE
+===================================================== */
 
 function addMessage(message) {
 
-    const element = document.createElement("div");
+    const row =
+        document.createElement(
+            "div"
+        );
 
-    element.className = "message";
 
-    const usernameElement =
-        document.createElement("div");
+    const mine =
+        message.username ===
+        username;
 
-    usernameElement.className = "username";
-    usernameElement.textContent = message.username;
 
-    const textElement =
-        document.createElement("div");
+    if (mine) {
 
-    textElement.className = "text";
-    textElement.textContent = message.text;
+        row.className =
+            "message-row outgoing";
 
-    const timeElement =
-        document.createElement("div");
+    } else {
 
-    timeElement.className = "time";
+        row.className =
+            "message-row incoming";
+    }
 
-    const date = new Date(message.time);
 
-    timeElement.textContent =
-        date.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit"
-        });
+    const bubble =
+        document.createElement(
+            "div"
+        );
 
-    element.appendChild(usernameElement);
-    element.appendChild(textElement);
-    element.appendChild(timeElement);
 
-    messagesContainer.appendChild(element);
+    if (mine) {
+
+        bubble.className =
+            "message outgoing";
+
+    } else {
+
+        bubble.className =
+            "message incoming";
+    }
+
+
+    /* USERNAME */
+
+    if (!mine) {
+
+        const author =
+            document.createElement(
+                "div"
+            );
+
+
+        author.className =
+            "message-author";
+
+
+        author.textContent =
+            String(
+                message.username || "Guest"
+            );
+
+
+        bubble.appendChild(
+            author
+        );
+    }
+
+
+    /* TEXT */
+
+    const text =
+        document.createElement(
+            "span"
+        );
+
+
+    text.className =
+        "message-text";
+
+
+    text.textContent =
+        String(
+            message.text || ""
+        );
+
+
+    bubble.appendChild(
+        text
+    );
+
+
+    /* TIME */
+
+    const meta =
+        document.createElement(
+            "span"
+        );
+
+
+    meta.className =
+        "message-meta";
+
+
+    const date =
+        new Date(
+            message.time
+        );
+
+
+    const time =
+        date.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+
+
+    meta.textContent =
+        time;
+
+
+    bubble.appendChild(
+        meta
+    );
+
+
+    row.appendChild(
+        bubble
+    );
+
+
+    messagesContainer.appendChild(
+        row
+    );
 }
+
+
+/* =====================================================
+   CHAT PREVIEW
+===================================================== */
+
+function updateChatPreview(message) {
+
+    if (!message) {
+
+        chatPreview.textContent =
+            "Пока сообщений нет";
+
+        lastTime.textContent =
+            "";
+
+        return;
+    }
+
+
+    chatPreview.textContent =
+        `${message.username}: ${message.text}`;
+
+
+    const date =
+        new Date(
+            message.time
+        );
+
+
+    lastTime.textContent =
+        date.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+}
+
+
+/* =====================================================
+   SEND MESSAGE
+===================================================== */
+
+form.addEventListener(
+    "submit",
+    (event) => {
+
+        event.preventDefault();
+
+
+        const text =
+            input.value.trim();
+
+
+        if (!text) {
+            return;
+        }
+
+
+        if (
+            !socket ||
+            socket.readyState !==
+                WebSocket.OPEN
+        ) {
+
+            alert(
+                "Нет соединения с сервером."
+            );
+
+            return;
+        }
+
+
+        socket.send(
+            JSON.stringify({
+                type: "message",
+
+                username:
+                    username,
+
+                text:
+                    text
+            })
+        );
+
+
+        input.value =
+            "";
+
+
+        input.focus();
+    }
+);
+
+
+/* =====================================================
+   ENTER
+===================================================== */
+
+input.addEventListener(
+    "keydown",
+    (event) => {
+
+        if (
+            event.key === "Enter" &&
+            !event.shiftKey
+        ) {
+
+            event.preventDefault();
+
+            form.requestSubmit();
+        }
+    }
+);
+
+
+/* =====================================================
+   EMOJI
+===================================================== */
+
+emojiButton.addEventListener(
+    "click",
+    (event) => {
+
+        event.stopPropagation();
+
+        emojiPanel.classList.toggle(
+            "open"
+        );
+    }
+);
+
+
+document
+    .querySelectorAll(
+        ".emoji-panel button"
+    )
+    .forEach(
+        (button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    input.value +=
+                        button.textContent;
+
+                    input.focus();
+
+                    emojiPanel.classList.remove(
+                        "open"
+                    );
+                }
+            );
+        }
+    );
+
+
+document.addEventListener(
+    "click",
+    (event) => {
+
+        if (
+            !emojiPanel.contains(
+                event.target
+            ) &&
+            event.target !==
+                emojiButton
+        ) {
+
+            emojiPanel.classList.remove(
+                "open"
+            );
+        }
+    }
+);
+
+
+/* =====================================================
+   MOBILE SIDEBAR
+===================================================== */
+
+function openSidebar() {
+
+    sidebar.classList.add(
+        "open"
+    );
+
+    sidebarOverlay.classList.add(
+        "visible"
+    );
+}
+
+
+function closeSidebar() {
+
+    sidebar.classList.remove(
+        "open"
+    );
+
+    sidebarOverlay.classList.remove(
+        "visible"
+    );
+}
+
+
+openSidebarButton.addEventListener(
+    "click",
+    openSidebar
+);
+
+
+closeSidebarButton.addEventListener(
+    "click",
+    closeSidebar
+);
+
+
+sidebarOverlay.addEventListener(
+    "click",
+    closeSidebar
+);
+
+
+chatItem.addEventListener(
+    "click",
+    () => {
+
+        closeSidebar();
+
+        input.focus();
+    }
+);
+
+
+/* =====================================================
+   SEARCH
+===================================================== */
+
+searchInput.addEventListener(
+    "input",
+    () => {
+
+        const value =
+            searchInput.value
+                .trim()
+                .toLowerCase();
+
+
+        if (!value) {
+
+            chatItem.style.display =
+                "flex";
+
+            return;
+        }
+
+
+        const found =
+            "общий чат".includes(
+                value
+            );
+
+
+        chatItem.style.display =
+            found
+                ? "flex"
+                : "none";
+    }
+);
+
+
+/* =====================================================
+   ESC
+===================================================== */
+
+document.addEventListener(
+    "keydown",
+    (event) => {
+
+        if (
+            event.key === "Escape"
+        ) {
+
+            closeSidebar();
+
+            emojiPanel.classList.remove(
+                "open"
+            );
+        }
+    }
+);
+
+
+/* =====================================================
+   SCROLL
+===================================================== */
 
 function scrollToBottom() {
 
-    messagesContainer.scrollTop =
-        messagesContainer.scrollHeight;
+    requestAnimationFrame(
+        () => {
+
+            messagesContainer.scrollTop =
+                messagesContainer.scrollHeight;
+        }
+    );
 }
 
-form.addEventListener("submit", (event) => {
 
-    event.preventDefault();
-
-    const text = input.value.trim();
-
-    if (!text) {
-        return;
-    }
-
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-        alert("Нет соединения с сервером");
-        return;
-    }
-
-    socket.send(JSON.stringify({
-        type: "message",
-        username,
-        text
-    }));
-
-    input.value = "";
-    input.focus();
-});
+/* =====================================================
+   START
+===================================================== */
 
 connect();
