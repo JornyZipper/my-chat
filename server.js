@@ -8,25 +8,22 @@ const server = http.createServer(app);
 
 const PORT = process.env.PORT || 10000;
 
-// Статические файлы сайта
+const messages = [];
+
 app.use(express.static(path.join(__dirname, "public")));
 
-// WebSocket сервер
 const wss = new WebSocket.Server({
     server,
     path: "/ws"
 });
 
-// Пока просто храним сообщения в памяти
-const messages = [];
-
 wss.on("connection", (ws) => {
-    console.log("Новый пользователь подключился");
+    console.log("User connected");
 
-    // Отправляем историю сообщений новому пользователю
+    // Отправляем историю новому пользователю
     ws.send(JSON.stringify({
         type: "history",
-        messages
+        messages: messages
     }));
 
     ws.on("message", (data) => {
@@ -37,13 +34,21 @@ wss.on("connection", (ws) => {
                 return;
             }
 
-            const username = String(message.username || "Unknown")
+            let username = String(
+                message.username || "Guest"
+            )
                 .trim()
                 .slice(0, 30);
 
-            const text = String(message.text || "")
+            let text = String(
+                message.text || ""
+            )
                 .trim()
                 .slice(0, 1000);
+
+            if (!username) {
+                username = "Guest";
+            }
 
             if (!text) {
                 return;
@@ -51,35 +56,38 @@ wss.on("connection", (ws) => {
 
             const newMessage = {
                 id: Date.now() + Math.random(),
-                username,
-                text,
+                username: username,
+                text: text,
                 time: new Date().toISOString()
             };
 
             messages.push(newMessage);
 
-            // Оставляем последние 100 сообщений
+            // Максимум 100 сообщений
             if (messages.length > 100) {
                 messages.shift();
             }
 
-            // Отправляем сообщение всем подключенным
-            wss.clients.forEach((client) => {
+            // Отправляем всем
+            for (const client of wss.clients) {
                 if (client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: "message",
                         message: newMessage
                     }));
                 }
-            });
+            }
 
         } catch (error) {
-            console.error("Ошибка:", error);
+            console.error(
+                "Message error:",
+                error
+            );
         }
     });
 
     ws.on("close", () => {
-        console.log("Пользователь отключился");
+        console.log("User disconnected");
     });
 });
 
@@ -93,5 +101,7 @@ app.get("/api/status", (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Chat server started on port ${PORT}`);
+    console.log(
+        `Server running on port ${PORT}`
+    );
 });
