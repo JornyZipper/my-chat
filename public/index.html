@@ -44,9 +44,9 @@
 <div class="app">
 
 
-    <!-- =================================================
+    <!-- =========================================
          SIDEBAR
-    ================================================== -->
+    ========================================== -->
 
     <aside
         class="sidebar glass"
@@ -81,7 +81,6 @@
                         <span
                             class="verified-badge hidden"
                             id="profileVerified"
-                            title="Подтверждённый профиль"
                         >
                             ✓
                         </span>
@@ -124,7 +123,6 @@
                     type="search"
                     placeholder="Найти по нику или имени"
                     autocomplete="off"
-                    enterkeyhint="search"
                 >
 
             </div>
@@ -132,14 +130,10 @@
         </div>
 
 
-        <!-- USERS TITLE -->
-
         <div class="section-title">
             Пользователи
         </div>
 
-
-        <!-- USERS -->
 
         <div
             class="user-list"
@@ -163,9 +157,9 @@
     ></div>
 
 
-    <!-- =================================================
-         MAIN
-    ================================================== -->
+    <!-- =========================================
+         CHAT
+    ========================================== -->
 
     <main class="chat">
 
@@ -174,14 +168,13 @@
 
         <header
             class="chat-header glass"
-            id="chatHeader"
         >
 
             <button
                 class="header-button"
                 id="openSidebar"
                 type="button"
-                aria-label="Открыть меню"
+                aria-label="Открыть пользователей"
             >
                 ☰
             </button>
@@ -245,9 +238,9 @@
 
 
             <div class="empty-text">
-                Найдите человека по нику
-                или имени и начните
-                переписку.
+                Найдите пользователя по
+                имени или @username,
+                чтобы начать переписку.
             </div>
 
 
@@ -335,7 +328,7 @@
             <button
                 class="composer-button attachment-button"
                 type="button"
-                aria-label="Вложения"
+                aria-label="Вложение"
             >
                 📎
             </button>
@@ -351,13 +344,12 @@
 
         </form>
 
-
     </main>
 
 
-    <!-- =================================================
-         SETTINGS MODAL
-    ================================================== -->
+    <!-- =========================================
+         SETTINGS
+    ========================================== -->
 
     <div
         class="modal-backdrop hidden"
@@ -366,22 +358,13 @@
 
         <section
             class="settings-modal glass"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settingsTitle"
         >
-
-
-            <!-- SETTINGS HEADER -->
 
             <div class="settings-header">
 
                 <div>
 
-                    <div
-                        class="settings-title"
-                        id="settingsTitle"
-                    >
+                    <div class="settings-title">
                         Настройки
                     </div>
 
@@ -417,9 +400,7 @@
                     </div>
 
 
-                    <label
-                        class="avatar-change"
-                    >
+                    <label class="avatar-change">
 
                         Изменить фото
 
@@ -444,12 +425,14 @@
                         Пользователь
                     </div>
 
+
                     <div
                         class="settings-profile-username"
                         id="settingsProfileUsername"
                     >
                         @username
                     </div>
+
 
                     <div
                         class="settings-verified hidden"
@@ -463,13 +446,14 @@
             </div>
 
 
-            <!-- FORM -->
+            <!-- NAME -->
 
             <div class="settings-section">
 
                 <div class="settings-label">
                     Имя
                 </div>
+
 
                 <input
                     class="settings-input"
@@ -483,6 +467,7 @@
                 <div class="settings-label">
                     Username
                 </div>
+
 
                 <div class="username-input-wrapper">
 
@@ -502,13 +487,13 @@
 
 
                 <div class="settings-hint">
-                    От 2 до 24 символов: буквы, цифры, точка, "_" и "-".
+                    2–24 символа: буквы, цифры, _, - и .
                 </div>
 
             </div>
 
 
-            <!-- APPEARANCE -->
+            <!-- THEME -->
 
             <div class="settings-section">
 
@@ -554,7 +539,7 @@
                         </div>
 
                         <div class="setting-description">
-                            Прозрачные панели и размытие
+                            Прозрачность и размытие
                         </div>
 
                     </div>
@@ -567,7 +552,9 @@
                             id="glassToggle"
                         >
 
-                        <span class="switch-slider"></span>
+                        <span
+                            class="switch-slider"
+                        ></span>
 
                     </label>
 
@@ -576,7 +563,7 @@
             </div>
 
 
-            <!-- BUTTON -->
+            <!-- SAVE -->
 
             <button
                 class="save-profile-button"
@@ -593,6 +580,89 @@
             ></div>
 
         </section>
+
+    </div>
+
+
+    <!-- =========================================
+         LOGIN
+    ========================================== -->
+
+    <div
+        class="login-overlay hidden"
+        id="loginOverlay"
+    >
+
+        <div class="login-card glass">
+
+            <div class="login-logo">
+                ✈
+            </div>
+
+
+            <div class="login-title">
+                Добро пожаловать
+            </div>
+
+
+            <div class="login-subtitle">
+                Создай профиль, чтобы
+                пользоваться My Chat.
+            </div>
+
+
+            <label class="login-label">
+                Имя
+            </label>
+
+
+            <input
+                class="login-input"
+                id="loginDisplayName"
+                type="text"
+                maxlength="40"
+                placeholder="Например: Арт"
+                autocomplete="name"
+            >
+
+
+            <label class="login-label">
+                Username
+            </label>
+
+
+            <div class="login-username">
+
+                <span>@</span>
+
+                <input
+                    class="login-input"
+                    id="loginUsername"
+                    type="text"
+                    maxlength="24"
+                    placeholder="Z1pperJ"
+                    autocapitalize="none"
+                    autocomplete="off"
+                >
+
+            </div>
+
+
+            <div
+                class="login-error"
+                id="loginError"
+            ></div>
+
+
+            <button
+                class="login-button"
+                id="loginButton"
+                type="button"
+            >
+                Войти
+            </button>
+
+        </div>
 
     </div>
 
