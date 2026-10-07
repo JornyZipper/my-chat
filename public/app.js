@@ -1,20 +1,35 @@
 const messagesContainer =
     document.getElementById("messages");
 
-const input =
-    document.getElementById("messageInput");
+const emptyScreen =
+    document.getElementById("emptyScreen");
 
-const form =
+const messageForm =
     document.getElementById("messageForm");
+
+const messageInput =
+    document.getElementById("messageInput");
 
 const statusElement =
     document.getElementById("status");
 
-const chatPreview =
-    document.getElementById("chatPreview");
+const headerName =
+    document.getElementById("headerName");
 
-const lastTime =
-    document.getElementById("lastTime");
+const headerAvatar =
+    document.getElementById("headerAvatar");
+
+const profileName =
+    document.getElementById("profileName");
+
+const profileAvatar =
+    document.getElementById("profileAvatar");
+
+const userList =
+    document.getElementById("userList");
+
+const searchInput =
+    document.getElementById("searchInput");
 
 const sidebar =
     document.getElementById("sidebar");
@@ -28,64 +43,138 @@ const openSidebarButton =
 const closeSidebarButton =
     document.getElementById("closeSidebar");
 
+const findButton =
+    document.getElementById("findButton");
+
+const headerSearchButton =
+    document.getElementById(
+        "headerSearchButton"
+    );
+
 const emojiButton =
-    document.getElementById("emojiButton");
+    document.getElementById(
+        "emojiButton"
+    );
 
 const emojiPanel =
-    document.getElementById("emojiPanel");
-
-const searchInput =
-    document.getElementById("searchInput");
-
-const chatItem =
-    document.getElementById("chatItem");
-
-
-/* =====================================================
-   USERNAME
-===================================================== */
-
-let username =
-    localStorage.getItem(
-        "chat_username"
+    document.getElementById(
+        "emojiPanel"
     );
 
-if (!username) {
 
-    username =
-        prompt("Как тебя зовут?");
-
-    if (
-        !username ||
-        !username.trim()
-    ) {
-        username = "Guest";
-    }
-
-    username =
-        username
-            .trim()
-            .slice(0, 30);
-
-    localStorage.setItem(
-        "chat_username",
-        username
-    );
-}
-
-
-/* =====================================================
-   SOCKET
-===================================================== */
+/*
+=====================================================
+STATE
+=====================================================
+*/
 
 let socket = null;
 
 let reconnectDelay = 1000;
 
+let username = null;
 
-/* =====================================================
-   CONNECT
-===================================================== */
+let users = [];
+
+let currentUser = null;
+
+let typingTimer = null;
+
+let remoteTypingTimer = null;
+
+let sentTypingState = false;
+
+
+/*
+=====================================================
+GET USERNAME
+=====================================================
+*/
+
+function getSavedUsername() {
+
+    return localStorage.getItem(
+        "chat_username"
+    );
+}
+
+
+function saveUsername(name) {
+
+    localStorage.setItem(
+        "chat_username",
+        name
+    );
+}
+
+
+function askUsername() {
+
+    let value =
+        prompt(
+            "Придумай ник\n\nОт 2 до 24 символов.\nМожно использовать буквы, цифры, _, -, ."
+        );
+
+
+    if (!value) {
+
+        value =
+            "Guest" +
+            Math.floor(
+                Math.random() * 9999
+            );
+    }
+
+
+    value =
+        value
+            .trim()
+            .slice(0, 24);
+
+
+    if (value.length < 2) {
+
+        value =
+            "Guest" +
+            Math.floor(
+                Math.random() * 9999
+            );
+    }
+
+
+    return value;
+}
+
+
+username =
+    getSavedUsername();
+
+
+if (!username) {
+
+    username =
+        askUsername();
+
+    saveUsername(
+        username
+    );
+}
+
+
+profileName.textContent =
+    "@" + username;
+
+profileAvatar.textContent =
+    username
+        .charAt(0)
+        .toUpperCase();
+
+
+/*
+=====================================================
+SOCKET CONNECT
+=====================================================
+*/
 
 function connect() {
 
@@ -105,18 +194,38 @@ function connect() {
         );
 
 
+    /*
+    =============================================
+    OPEN
+    =============================================
+    */
+
     socket.addEventListener(
         "open",
         () => {
 
-            statusElement.textContent =
-                "в сети";
-
             reconnectDelay =
                 1000;
+
+
+            socket.send(
+                JSON.stringify({
+                    type:
+                        "login",
+
+                    nickname:
+                        username
+                })
+            );
         }
     );
 
+
+    /*
+    =============================================
+    MESSAGE
+    =============================================
+    */
 
     socket.addEventListener(
         "message",
@@ -130,10 +239,145 @@ function connect() {
                     );
 
 
+                /*
+                =================================
+                LOGIN OK
+                =================================
+                */
+
+                if (
+                    data.type ===
+                    "login_ok"
+                ) {
+
+                    username =
+                        data.nickname;
+
+                    saveUsername(
+                        username
+                    );
+
+
+                    profileName.textContent =
+                        "@" + username;
+
+                    profileAvatar.textContent =
+                        username
+                            .charAt(0)
+                            .toUpperCase();
+
+
+                    statusElement.textContent =
+                        currentUser
+                            ? getUserStatus(
+                                currentUser
+                            )
+                            : "Найдите человека по нику";
+
+
+                    renderUsers();
+
+                    return;
+                }
+
+
+                /*
+                =================================
+                LOGIN ERROR
+                =================================
+                */
+
+                if (
+                    data.type ===
+                    "login_error"
+                ) {
+
+                    const newName =
+                        askUsername();
+
+
+                    username =
+                        newName;
+
+
+                    saveUsername(
+                        username
+                    );
+
+
+                    profileName.textContent =
+                        "@" + username;
+
+                    profileAvatar.textContent =
+                        username
+                            .charAt(0)
+                            .toUpperCase();
+
+
+                    if (
+                        socket.readyState ===
+                        WebSocket.OPEN
+                    ) {
+
+                        socket.send(
+                            JSON.stringify({
+                                type:
+                                    "login",
+
+                                nickname:
+                                    username
+                            })
+                        );
+                    }
+
+                    return;
+                }
+
+
+                /*
+                =================================
+                USERS
+                =================================
+                */
+
+                if (
+                    data.type ===
+                    "users"
+                ) {
+
+                    users =
+                        data.users;
+
+                    renderUsers();
+
+                    updateCurrentUserStatus();
+
+                    return;
+                }
+
+
+                /*
+                =================================
+                HISTORY
+                =================================
+                */
+
                 if (
                     data.type ===
                     "history"
                 ) {
+
+                    if (
+                        normalize(
+                            data.with
+                        ) !==
+                        normalize(
+                            currentUser
+                        )
+                    ) {
+                        return;
+                    }
+
 
                     messagesContainer.innerHTML =
                         "";
@@ -150,42 +394,146 @@ function connect() {
                     }
 
 
-                    const last =
-                        data.messages[
-                            data.messages.length - 1
-                        ];
-
-
-                    updateChatPreview(
-                        last
-                    );
-
-
                     scrollToBottom();
+
+                    return;
                 }
 
+
+                /*
+                =================================
+                NEW MESSAGE
+                =================================
+                */
 
                 if (
                     data.type ===
                     "message"
                 ) {
 
-                    addMessage(
-                        data.message
+                    const message =
+                        data.message;
+
+
+                    const relatedToCurrentChat =
+                        currentUser &&
+                        (
+                            normalize(
+                                message.from
+                            ) ===
+                            normalize(
+                                currentUser
+                            ) ||
+
+                            normalize(
+                                message.to
+                            ) ===
+                            normalize(
+                                currentUser
+                            )
+                        );
+
+
+                    if (
+                        relatedToCurrentChat
+                    ) {
+
+                        addMessage(
+                            message
+                        );
+
+                        scrollToBottom();
+                    }
+
+
+                    /*
+                    Принудительно выключаем
+                    typing после отправки.
+                    */
+
+                    if (
+                        normalize(
+                            message.from
+                        ) ===
+                        normalize(
+                            username
+                        )
+                    ) {
+
+                        stopTyping();
+                    }
+
+
+                    return;
+                }
+
+
+                /*
+                =================================
+                TYPING
+                =================================
+                */
+
+                if (
+                    data.type ===
+                    "typing"
+                ) {
+
+                    const from =
+                        data.from;
+
+
+                    if (
+                        !currentUser
+                    ) {
+                        return;
+                    }
+
+
+                    if (
+                        normalize(from) !==
+                        normalize(currentUser)
+                    ) {
+                        return;
+                    }
+
+
+                    clearTimeout(
+                        remoteTypingTimer
                     );
 
 
-                    updateChatPreview(
-                        data.message
-                    );
+                    if (
+                        data.isTyping
+                    ) {
+
+                        statusElement.textContent =
+                            "печатает…";
 
 
-                    scrollToBottom();
+                        remoteTypingTimer =
+                            setTimeout(
+                                () => {
+
+                                    updateCurrentUserStatus();
+
+                                },
+                                1800
+                            );
+
+                    } else {
+
+                        updateCurrentUserStatus();
+                    }
+
+
+                    return;
                 }
 
             } catch (error) {
 
                 console.error(
+                    "Data error:",
                     error
                 );
             }
@@ -193,18 +541,25 @@ function connect() {
     );
 
 
+    /*
+    =============================================
+    CLOSE
+    =============================================
+    */
+
     socket.addEventListener(
         "close",
         () => {
 
             statusElement.textContent =
-                "переподключение...";
+                "соединение потеряно";
 
 
             setTimeout(
                 () => {
 
                     connect();
+
 
                     reconnectDelay =
                         Math.min(
@@ -219,6 +574,12 @@ function connect() {
     );
 
 
+    /*
+    =============================================
+    ERROR
+    =============================================
+    */
+
     socket.addEventListener(
         "error",
         () => {
@@ -230,21 +591,434 @@ function connect() {
 }
 
 
-/* =====================================================
-   ADD MESSAGE
-===================================================== */
+/*
+=====================================================
+NORMALIZE
+=====================================================
+*/
 
-function addMessage(message) {
+function normalize(value) {
 
-    const row =
+    return String(
+        value || ""
+    )
+        .trim()
+        .toLowerCase();
+}
+
+
+/*
+=====================================================
+USER STATUS
+=====================================================
+*/
+
+function getUserStatus(nickname) {
+
+    const user =
+        users.find(
+            item =>
+                normalize(item.nickname) ===
+                normalize(nickname)
+        );
+
+
+    if (!user) {
+
+        return "не в сети";
+    }
+
+
+    return user.online
+        ? "в сети"
+        : "не в сети";
+}
+
+
+function updateCurrentUserStatus() {
+
+    if (!currentUser) {
+
+        statusElement.textContent =
+            "Найдите человека по нику";
+
+        return;
+    }
+
+
+    statusElement.textContent =
+        getUserStatus(
+            currentUser
+        );
+}
+
+
+/*
+=====================================================
+RENDER USERS
+=====================================================
+*/
+
+function renderUsers() {
+
+    if (!username) {
+        return;
+    }
+
+
+    const search =
+        searchInput.value
+            .trim()
+            .toLowerCase();
+
+
+    const filtered =
+        users
+            .filter(
+                user =>
+                    normalize(
+                        user.nickname
+                    ) !==
+                    normalize(
+                        username
+                    )
+            )
+            .filter(
+                user =>
+                    !search ||
+                    user.nickname
+                        .toLowerCase()
+                        .includes(search)
+            )
+            .sort(
+                (a, b) => {
+
+                    if (
+                        a.online !==
+                        b.online
+                    ) {
+
+                        return a.online
+                            ? -1
+                            : 1;
+                    }
+
+
+                    return a.nickname
+                        .localeCompare(
+                            b.nickname
+                        );
+                }
+            );
+
+
+    userList.innerHTML =
+        "";
+
+
+    if (
+        filtered.length ===
+        0
+    ) {
+
+        const empty =
+            document.createElement(
+                "div"
+            );
+
+
+        empty.className =
+            "empty-users";
+
+
+        if (search) {
+
+            empty.textContent =
+                "Пользователь с таким ником не найден.";
+
+        } else {
+
+            empty.textContent =
+                "Здесь появятся пользователи.";
+        }
+
+
+        userList.appendChild(
+            empty
+        );
+
+
+        return;
+    }
+
+
+    for (
+        const user
+        of filtered
+    ) {
+
+        createUserElement(
+            user
+        );
+    }
+}
+
+
+/*
+=====================================================
+CREATE USER ELEMENT
+=====================================================
+*/
+
+function createUserElement(user) {
+
+    const button =
+        document.createElement(
+            "button"
+        );
+
+
+    button.type =
+        "button";
+
+
+    button.className =
+        "user-item";
+
+
+    if (
+        currentUser &&
+        normalize(
+            currentUser
+        ) ===
+        normalize(
+            user.nickname
+        )
+    ) {
+
+        button.classList.add(
+            "active"
+        );
+    }
+
+
+    /*
+    AVATAR
+    */
+
+    const avatar =
         document.createElement(
             "div"
         );
 
 
+    avatar.className =
+        "user-avatar";
+
+
+    avatar.textContent =
+        user.nickname
+            .charAt(0)
+            .toUpperCase();
+
+
+    if (user.online) {
+
+        const dot =
+            document.createElement(
+                "div"
+            );
+
+
+        dot.className =
+            "online-dot";
+
+
+        avatar.appendChild(
+            dot
+        );
+    }
+
+
+    /*
+    INFO
+    */
+
+    const info =
+        document.createElement(
+            "div"
+        );
+
+
+    info.className =
+        "user-info";
+
+
+    const name =
+        document.createElement(
+            "div"
+        );
+
+
+    name.className =
+        "user-name";
+
+
+    name.textContent =
+        "@" + user.nickname;
+
+
+    const status =
+        document.createElement(
+            "div"
+        );
+
+
+    status.className =
+        "user-status";
+
+
+    status.textContent =
+        user.online
+            ? "В сети"
+            : "Не в сети";
+
+
+    info.appendChild(
+        name
+    );
+
+    info.appendChild(
+        status
+    );
+
+
+    button.appendChild(
+        avatar
+    );
+
+    button.appendChild(
+        info
+    );
+
+
+    button.addEventListener(
+        "click",
+        () => {
+
+            openChat(
+                user.nickname
+            );
+        }
+    );
+
+
+    userList.appendChild(
+        button
+    );
+}
+
+
+/*
+=====================================================
+OPEN CHAT
+=====================================================
+*/
+
+function openChat(nickname) {
+
+    currentUser =
+        nickname;
+
+
+    headerName.textContent =
+        "@" + nickname;
+
+
+    headerAvatar.textContent =
+        nickname
+            .charAt(0)
+            .toUpperCase();
+
+
+    emptyScreen.classList.add(
+        "hidden"
+    );
+
+
+    messagesContainer.classList.remove(
+        "hidden"
+    );
+
+
+    messageForm.classList.remove(
+        "hidden"
+    );
+
+
+    updateCurrentUserStatus();
+
+
+    messagesContainer.innerHTML =
+        "";
+
+
+    if (
+        socket &&
+        socket.readyState ===
+        WebSocket.OPEN
+    ) {
+
+        socket.send(
+            JSON.stringify({
+                type:
+                    "history",
+
+                with:
+                    nickname
+            })
+        );
+    }
+
+
+    closeSidebar();
+
+
+    setTimeout(
+        () => {
+
+            messageInput.focus();
+
+        },
+        100
+    );
+
+
+    renderUsers();
+}
+
+
+/*
+=====================================================
+ADD MESSAGE
+=====================================================
+*/
+
+function addMessage(message) {
+
     const mine =
-        message.username ===
-        username;
+        normalize(
+            message.from
+        ) ===
+        normalize(
+            username
+        );
+
+
+    const row =
+        document.createElement(
+            "div"
+        );
 
 
     row.className =
@@ -265,6 +1039,10 @@ function addMessage(message) {
             : "message incoming";
 
 
+    /*
+    AUTHOR
+    */
+
     if (!mine) {
 
         const author =
@@ -272,14 +1050,15 @@ function addMessage(message) {
                 "div"
             );
 
+
         author.className =
             "message-author";
 
+
         author.textContent =
-            String(
-                message.username ||
-                "Guest"
-            );
+            "@" +
+            message.from;
+
 
         bubble.appendChild(
             author
@@ -287,24 +1066,33 @@ function addMessage(message) {
     }
 
 
+    /*
+    TEXT
+    */
+
     const text =
         document.createElement(
             "span"
         );
 
+
     text.className =
         "message-text";
 
-    text.textContent =
-        String(
-            message.text || ""
-        );
 
+    text.textContent =
+        message.text;
+
+
+    /*
+    TIME
+    */
 
     const meta =
         document.createElement(
             "span"
         );
+
 
     meta.className =
         "message-meta";
@@ -320,66 +1108,42 @@ function addMessage(message) {
         date.toLocaleTimeString(
             [],
             {
-                hour: "2-digit",
-                minute: "2-digit"
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit"
             }
         );
 
 
-    bubble.appendChild(text);
+    bubble.appendChild(
+        text
+    );
 
-    bubble.appendChild(meta);
+    bubble.appendChild(
+        meta
+    );
 
-    row.appendChild(bubble);
 
-    messagesContainer.appendChild(row);
+    row.appendChild(
+        bubble
+    );
+
+
+    messagesContainer.appendChild(
+        row
+    );
 }
 
 
-/* =====================================================
-   PREVIEW
-===================================================== */
+/*
+=====================================================
+SEND
+=====================================================
+*/
 
-function updateChatPreview(message) {
-
-    if (!message) {
-
-        chatPreview.textContent =
-            "Пока сообщений нет";
-
-        lastTime.textContent =
-            "";
-
-        return;
-    }
-
-
-    chatPreview.textContent =
-        `${message.username}: ${message.text}`;
-
-
-    const date =
-        new Date(
-            message.time
-        );
-
-
-    lastTime.textContent =
-        date.toLocaleTimeString(
-            [],
-            {
-                hour: "2-digit",
-                minute: "2-digit"
-            }
-        );
-}
-
-
-/* =====================================================
-   SEND
-===================================================== */
-
-form.addEventListener(
+messageForm.addEventListener(
     "submit",
     (event) => {
 
@@ -387,7 +1151,8 @@ form.addEventListener(
 
 
         const text =
-            input.value.trim();
+            messageInput.value
+                .trim();
 
 
         if (!text) {
@@ -395,10 +1160,15 @@ form.addEventListener(
         }
 
 
+        if (!currentUser) {
+            return;
+        }
+
+
         if (
             !socket ||
             socket.readyState !==
-                WebSocket.OPEN
+            WebSocket.OPEN
         ) {
 
             alert(
@@ -411,107 +1181,202 @@ form.addEventListener(
 
         socket.send(
             JSON.stringify({
-                type: "message",
-                username: username,
-                text: text
+                type:
+                    "message",
+
+                to:
+                    currentUser,
+
+                text:
+                    text
             })
         );
 
 
-        input.value =
+        messageInput.value =
             "";
 
-        input.focus();
+
+        stopTyping();
+
+
+        messageInput.focus();
     }
 );
 
 
-/* =====================================================
-   ENTER
-===================================================== */
+/*
+=====================================================
+TYPING
+=====================================================
+*/
 
-input.addEventListener(
-    "keydown",
-    (event) => {
+messageInput.addEventListener(
+    "input",
+    () => {
+
+        if (!currentUser) {
+            return;
+        }
+
 
         if (
-            event.key === "Enter" &&
-            !event.shiftKey
+            !socket ||
+            socket.readyState !==
+            WebSocket.OPEN
         ) {
-
-            event.preventDefault();
-
-            form.requestSubmit();
+            return;
         }
+
+
+        if (!sentTypingState) {
+
+            socket.send(
+                JSON.stringify({
+                    type:
+                        "typing",
+
+                    to:
+                        currentUser,
+
+                    isTyping:
+                        true
+                })
+            );
+
+
+            sentTypingState =
+                true;
+        }
+
+
+        clearTimeout(
+            typingTimer
+        );
+
+
+        typingTimer =
+            setTimeout(
+                () => {
+
+                    stopTyping();
+
+                },
+                1200
+            );
     }
 );
 
 
-/* =====================================================
-   EMOJI
-===================================================== */
+function stopTyping() {
 
-emojiButton.addEventListener(
+    clearTimeout(
+        typingTimer
+    );
+
+
+    if (
+        !sentTypingState
+    ) {
+        return;
+    }
+
+
+    if (
+        socket &&
+        socket.readyState ===
+        WebSocket.OPEN &&
+        currentUser
+    ) {
+
+        socket.send(
+            JSON.stringify({
+                type:
+                    "typing",
+
+                to:
+                    currentUser,
+
+                isTyping:
+                    false
+            })
+        );
+    }
+
+
+    sentTypingState =
+        false;
+}
+
+
+messageInput.addEventListener(
+    "blur",
+    stopTyping
+);
+
+
+/*
+=====================================================
+SEARCH
+=====================================================
+*/
+
+searchInput.addEventListener(
+    "input",
+    () => {
+
+        renderUsers();
+    }
+);
+
+
+/*
+=====================================================
+FIND BUTTON
+=====================================================
+*/
+
+findButton.addEventListener(
     "click",
-    (event) => {
+    () => {
 
-        event.stopPropagation();
+        openSidebar();
 
-        emojiPanel.classList.toggle(
-            "open"
+        setTimeout(
+            () => {
+
+                searchInput.focus();
+
+            },
+            250
         );
     }
 );
 
 
-document
-    .querySelectorAll(
-        ".emoji-panel button"
-    )
-    .forEach(
-        (button) => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    input.value +=
-                        button.textContent;
-
-                    input.focus();
-
-                    emojiPanel.classList.remove(
-                        "open"
-                    );
-                }
-            );
-        }
-    );
-
-
-document.addEventListener(
+headerSearchButton.addEventListener(
     "click",
-    (event) => {
+    () => {
 
-        if (
-            !emojiPanel.contains(
-                event.target
-            ) &&
-            event.target !==
-                emojiButton
-        ) {
+        openSidebar();
 
-            emojiPanel.classList.remove(
-                "open"
-            );
-        }
+        setTimeout(
+            () => {
+
+                searchInput.focus();
+
+            },
+            250
+        );
     }
 );
 
 
-/* =====================================================
-   MOBILE SIDEBAR
-===================================================== */
+/*
+=====================================================
+SIDEBAR
+=====================================================
+*/
 
 function openSidebar() {
 
@@ -555,64 +1420,83 @@ sidebarOverlay.addEventListener(
 );
 
 
-chatItem.addEventListener(
+/*
+=====================================================
+EMOJI
+=====================================================
+*/
+
+emojiButton.addEventListener(
     "click",
-    () => {
+    (event) => {
 
-        closeSidebar();
+        event.stopPropagation();
 
-        input.focus();
+        emojiPanel.classList.toggle(
+            "open"
+        );
     }
 );
 
 
-/* =====================================================
-   SEARCH
-===================================================== */
+document
+    .querySelectorAll(
+        ".emoji-panel button"
+    )
+    .forEach(
+        button => {
 
-searchInput.addEventListener(
-    "input",
-    () => {
+            button.addEventListener(
+                "click",
+                () => {
 
-        const value =
-            searchInput.value
-                .trim()
-                .toLowerCase();
+                    messageInput.value +=
+                        button.textContent;
 
+                    messageInput.focus();
 
-        if (!value) {
-
-            chatItem.style.display =
-                "flex";
-
-            return;
-        }
-
-
-        const found =
-            "общий чат".includes(
-                value
+                    emojiPanel.classList.remove(
+                        "open"
+                    );
+                }
             );
+        }
+    );
 
 
-        chatItem.style.display =
-            found
-                ? "flex"
-                : "none";
+document.addEventListener(
+    "click",
+    (event) => {
+
+        if (
+            !emojiPanel.contains(
+                event.target
+            ) &&
+            event.target !==
+                emojiButton
+        ) {
+
+            emojiPanel.classList.remove(
+                "open"
+            );
+        }
     }
 );
 
 
-/* =====================================================
-   ESC
-===================================================== */
+/*
+=====================================================
+ESC
+=====================================================
+*/
 
 document.addEventListener(
     "keydown",
     (event) => {
 
         if (
-            event.key === "Escape"
+            event.key ===
+            "Escape"
         ) {
 
             closeSidebar();
@@ -625,20 +1509,23 @@ document.addEventListener(
 );
 
 
-/* =====================================================
-   SWIPE FROM LEFT
-   открытие меню пальцем
-===================================================== */
+/*
+=====================================================
+SWIPE
+=====================================================
+*/
 
 let touchStartX = 0;
 let touchStartY = 0;
 
+
 document.addEventListener(
     "touchstart",
-    (event) => {
+    event => {
 
         const touch =
             event.touches[0];
+
 
         touchStartX =
             touch.clientX;
@@ -647,38 +1534,38 @@ document.addEventListener(
             touch.clientY;
     },
     {
-        passive: true
+        passive:
+            true
     }
 );
 
 
 document.addEventListener(
     "touchend",
-    (event) => {
+    event => {
 
         const touch =
             event.changedTouches[0];
 
+
         const deltaX =
             touch.clientX -
             touchStartX;
+
 
         const deltaY =
             touch.clientY -
             touchStartY;
 
 
-        const fromLeft =
-            touchStartX < 35;
-
-        const mostlyHorizontal =
+        const horizontal =
             Math.abs(deltaX) >
             Math.abs(deltaY);
 
 
         if (
-            fromLeft &&
-            mostlyHorizontal &&
+            horizontal &&
+            touchStartX < 35 &&
             deltaX > 70
         ) {
 
@@ -687,10 +1574,10 @@ document.addEventListener(
 
 
         if (
+            horizontal &&
             sidebar.classList.contains(
                 "open"
             ) &&
-            mostlyHorizontal &&
             deltaX < -70
         ) {
 
@@ -698,14 +1585,17 @@ document.addEventListener(
         }
     },
     {
-        passive: true
+        passive:
+            true
     }
 );
 
 
-/* =====================================================
-   SCROLL
-===================================================== */
+/*
+=====================================================
+SCROLL
+=====================================================
+*/
 
 function scrollToBottom() {
 
@@ -719,8 +1609,31 @@ function scrollToBottom() {
 }
 
 
-/* =====================================================
-   START
-===================================================== */
+/*
+=====================================================
+INITIAL MOBILE
+=====================================================
+*/
+
+if (
+    window.innerWidth <= 700
+) {
+
+    setTimeout(
+        () => {
+
+            openSidebar();
+
+        },
+        200
+    );
+}
+
+
+/*
+=====================================================
+START
+=====================================================
+*/
 
 connect();
