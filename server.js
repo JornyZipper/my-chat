@@ -11,21 +11,21 @@ const PORT = process.env.PORT || 10000;
 
 /*
 =====================================================
-STORAGE
+DATA
 =====================================================
 */
 
-// Сейчас данные живут в памяти сервера.
-// Позже можно подключить PostgreSQL.
+// id -> profile
+const users = new Map();
 
+// nickname -> id
+const nicknames = new Map();
+
+// id -> websocket
 const onlineUsers = new Map();
-// normalized nickname -> { nickname, ws }
 
-const knownUsers = new Map();
-// normalized nickname -> nickname
-
+// conversationId -> messages
 const conversations = new Map();
-// "user1|user2" -> messages
 
 
 /*
@@ -34,27 +34,10 @@ HELPERS
 =====================================================
 */
 
-function normalizeNickname(nickname) {
-    return String(nickname || "")
+function normalize(value) {
+    return String(value || "")
         .trim()
         .toLowerCase();
-}
-
-
-function validNickname(nickname) {
-
-    const value = String(nickname || "").trim();
-
-    if (value.length < 2) {
-        return false;
-    }
-
-    if (value.length > 24) {
-        return false;
-    }
-
-    // Буквы любых языков, цифры, _, -, .
-    return /^[\p{L}\p{N}_.-]+$/u.test(value);
 }
 
 
@@ -71,49 +54,203 @@ function send(ws, data) {
 }
 
 
-function conversationKey(a, b) {
+function validNickname(value) {
 
-    const first =
-        normalizeNickname(a);
-
-    const second =
-        normalizeNickname(b);
-
-    return [
-        first,
-        second
-    ]
-        .sort()
-        .join("|");
-}
+    const nickname =
+        String(value || "")
+            .trim();
 
 
-function broadcastUserList() {
-
-    const users = [];
-
-    for (const nickname of knownUsers.values()) {
-
-        const key =
-            normalizeNickname(nickname);
-
-        users.push({
-            nickname,
-            online:
-                onlineUsers.has(key)
-        });
+    if (
+        nickname.length < 2 ||
+        nickname.length > 24
+    ) {
+        return false;
     }
 
 
-    for (const {
-        ws
-    } of onlineUsers.values()) {
+    return /^[\p{L}\p{N}_.-]+$/u.test(
+        nickname
+    );
+}
+
+
+function cleanNickname(value) {
+
+    return String(value || "")
+        .trim()
+        .slice(0, 24);
+}
+
+
+function cleanDisplayName(value) {
+
+    const name =
+        String(value || "")
+            .trim()
+            .slice(0, 40);
+
+    return name || "Пользователь";
+}
+
+
+function cleanAvatar(value) {
+
+    const avatar =
+        String(value || "");
+
+
+    /*
+    Разрешаем только data:image/*
+    */
+
+    if (
+        !avatar.startsWith(
+            "data:image/"
+        )
+    ) {
+        return "";
+    }
+
+
+    /*
+    Ограничение размера примерно 500 KB.
+    */
+
+    if (
+        avatar.length > 500000
+    ) {
+        return "";
+    }
+
+
+    return avatar;
+}
+
+
+function isVerified(nickname) {
+
+    return (
+        normalize(nickname) ===
+        "z1ipperj"
+    );
+}
+
+
+function conversationKey(
+    firstId,
+    secondId
+) {
+
+    return [
+        String(firstId),
+        String(secondId)
+    ]
+        .sort()
+        .join(":");
+}
+
+
+function profileForClient(
+    profile,
+    online = false
+) {
+
+    if (!profile) {
+        return null;
+    }
+
+
+    return {
+        id:
+            profile.id,
+
+        nickname:
+            profile.nickname,
+
+        displayName:
+            profile.displayName,
+
+        avatar:
+            profile.avatar || "",
+
+        verified:
+            Boolean(
+                profile.verified
+            ),
+
+        online:
+            Boolean(online)
+    };
+}
+
+
+function getAllUsers() {
+
+    const result = [];
+
+
+    for (
+        const profile
+        of users.values()
+    ) {
+
+        result.push(
+            profileForClient(
+                profile,
+                onlineUsers.has(
+                    profile.id
+                )
+            )
+        );
+    }
+
+
+    result.sort(
+        (a, b) => {
+
+            if (
+                a.online !==
+                b.online
+            ) {
+                return a.online
+                    ? -1
+                    : 1;
+            }
+
+
+            return (
+                a.nickname.localeCompare(
+                    b.nickname
+                )
+            );
+        }
+    );
+
+
+    return result;
+}
+
+
+function broadcastUsers() {
+
+    const list =
+        getAllUsers();
+
+
+    for (
+        const ws
+        of onlineUsers.values()
+    ) {
 
         send(
             ws,
             {
-                type: "users",
-                users
+                type:
+                    "users",
+
+                users:
+                    list
             }
         );
     }
@@ -122,7 +259,7 @@ function broadcastUserList() {
 
 /*
 =====================================================
-STATIC SITE
+STATIC
 =====================================================
 */
 
@@ -153,29 +290,29 @@ wss.on(
     "connection",
     (ws) => {
 
-        ws.nickname = null;
+        ws.userId = null;
 
 
         console.log(
-            "WebSocket connection"
+            "New websocket connection"
         );
 
 
         /*
         =============================================
-        MESSAGE HANDLER
+        MESSAGE
         =============================================
         */
 
         ws.on(
             "message",
-            (rawData) => {
+            (raw) => {
 
                 try {
 
                     const data =
                         JSON.parse(
-                            rawData.toString()
+                            raw.toString()
                         );
 
 
@@ -186,13 +323,49 @@ wss.on(
                     */
 
                     if (
-                        data.type === "login"
+                        data.type ===
+                        "login"
                     ) {
 
-                        const nickname =
+                        const id =
                             String(
-                                data.nickname || ""
+                                data.id || ""
                             ).trim();
+
+
+                        const nickname =
+                            cleanNickname(
+                                data.nickname
+                            );
+
+
+                        const displayName =
+                            cleanDisplayName(
+                                data.displayName
+                            );
+
+
+                        const avatar =
+                            cleanAvatar(
+                                data.avatar
+                            );
+
+
+                        if (!id) {
+
+                            send(
+                                ws,
+                                {
+                                    type:
+                                        "login_error",
+
+                                    error:
+                                        "Не удалось определить профиль."
+                                }
+                            );
+
+                            return;
+                        }
 
 
                         if (
@@ -206,8 +379,9 @@ wss.on(
                                 {
                                     type:
                                         "login_error",
+
                                     error:
-                                        "Ник должен содержать от 2 до 24 символов. Разрешены буквы, цифры, _, -, ."
+                                        "Ник должен содержать от 2 до 24 символов."
                                 }
                             );
 
@@ -215,16 +389,25 @@ wss.on(
                         }
 
 
-                        const normalized =
-                            normalizeNickname(
+                        const nicknameKey =
+                            normalize(
                                 nickname
                             );
 
 
+                        const existingId =
+                            nicknames.get(
+                                nicknameKey
+                            );
+
+
+                        /*
+                        Ник уже занят другим пользователем.
+                        */
+
                         if (
-                            onlineUsers.has(
-                                normalized
-                            )
+                            existingId &&
+                            existingId !== id
                         ) {
 
                             send(
@@ -232,8 +415,9 @@ wss.on(
                                 {
                                     type:
                                         "login_error",
+
                                     error:
-                                        "Этот ник уже используется."
+                                        "Этот ник уже занят."
                                 }
                             );
 
@@ -241,22 +425,128 @@ wss.on(
                         }
 
 
+                        /*
+                        Если этот пользователь
+                        уже онлайн — отключаем
+                        старое соединение.
+                        */
+
+                        const previous =
+                            onlineUsers.get(
+                                id
+                            );
+
+
+                        if (
+                            previous &&
+                            previous.ws !== ws
+                        ) {
+
+                            try {
+
+                                previous.ws.close();
+
+                            } catch {}
+
+                            onlineUsers.delete(
+                                id
+                            );
+                        }
+
+
+                        /*
+                        Получаем старый профиль.
+                        */
+
+                        let profile =
+                            users.get(id);
+
+
+                        if (!profile) {
+
+                            profile = {
+
+                                id,
+
+                                nickname,
+
+                                displayName,
+
+                                avatar,
+
+                                verified:
+                                    isVerified(
+                                        nickname
+                                    )
+                            };
+
+                        } else {
+
+                            /*
+                            Убираем старый ник
+                            из индекса.
+                            */
+
+                            const oldKey =
+                                normalize(
+                                    profile.nickname
+                                );
+
+
+                            if (
+                                nicknames.get(
+                                    oldKey
+                                ) === id
+                            ) {
+
+                                nicknames.delete(
+                                    oldKey
+                                );
+                            }
+
+
+                            profile.nickname =
+                                nickname;
+
+                            profile.displayName =
+                                displayName;
+
+                            profile.avatar =
+                                avatar;
+
+                            profile.verified =
+                                isVerified(
+                                    nickname
+                                );
+                        }
+
+
+                        users.set(
+                            id,
+                            profile
+                        );
+
+
+                        nicknames.set(
+                            nicknameKey,
+                            id
+                        );
+
+
+                        ws.userId =
+                            id;
+
+
                         ws.nickname =
                             nickname;
 
 
                         onlineUsers.set(
-                            normalized,
+                            id,
                             {
-                                nickname,
-                                ws
+                                ws,
+                                profile
                             }
-                        );
-
-
-                        knownUsers.set(
-                            normalized,
-                            nickname
                         );
 
 
@@ -265,16 +555,57 @@ wss.on(
                             {
                                 type:
                                     "login_ok",
-                                nickname
+
+                                profile:
+                                    profileForClient(
+                                        profile,
+                                        true
+                                    )
                             }
                         );
 
 
-                        broadcastUserList();
+                        send(
+                            ws,
+                            {
+                                type:
+                                    "users",
+
+                                users:
+                                    getAllUsers()
+                            }
+                        );
+
+
+                        broadcastUsers();
 
 
                         console.log(
                             `${nickname} connected`
+                        );
+
+
+                        return;
+                    }
+
+
+                    /*
+                    =================================
+                    AUTH REQUIRED
+                    =================================
+                    */
+
+                    if (!ws.userId) {
+
+                        send(
+                            ws,
+                            {
+                                type:
+                                    "error",
+
+                                error:
+                                    "Сначала войдите в профиль."
+                            }
                         );
 
                         return;
@@ -283,20 +614,182 @@ wss.on(
 
                     /*
                     =================================
-                    EVERYTHING BELOW REQUIRES LOGIN
+                    UPDATE PROFILE
                     =================================
                     */
 
-                    if (!ws.nickname) {
+                    if (
+                        data.type ===
+                        "update_profile"
+                    ) {
+
+                        const profile =
+                            users.get(
+                                ws.userId
+                            );
+
+
+                        if (!profile) {
+                            return;
+                        }
+
+
+                        const newNickname =
+                            cleanNickname(
+                                data.nickname
+                            );
+
+
+                        const newDisplayName =
+                            cleanDisplayName(
+                                data.displayName
+                            );
+
+
+                        const newAvatar =
+                            cleanAvatar(
+                                data.avatar
+                            );
+
+
+                        if (
+                            !validNickname(
+                                newNickname
+                            )
+                        ) {
+
+                            send(
+                                ws,
+                                {
+                                    type:
+                                        "profile_error",
+
+                                    error:
+                                        "Неверный ник."
+                                }
+                            );
+
+                            return;
+                        }
+
+
+                        const newKey =
+                            normalize(
+                                newNickname
+                            );
+
+
+                        const existingId =
+                            nicknames.get(
+                                newKey
+                            );
+
+
+                        if (
+                            existingId &&
+                            existingId !==
+                                ws.userId
+                        ) {
+
+                            send(
+                                ws,
+                                {
+                                    type:
+                                        "profile_error",
+
+                                    error:
+                                        "Этот ник уже занят."
+                                }
+                            );
+
+                            return;
+                        }
+
+
+                        /*
+                        Старый nickname index
+                        */
+
+                        const oldKey =
+                            normalize(
+                                profile.nickname
+                            );
+
+
+                        if (
+                            nicknames.get(
+                                oldKey
+                            ) ===
+                            ws.userId
+                        ) {
+
+                            nicknames.delete(
+                                oldKey
+                            );
+                        }
+
+
+                        profile.nickname =
+                            newNickname;
+
+                        profile.displayName =
+                            newDisplayName;
+
+                        profile.avatar =
+                            newAvatar;
+
+                        profile.verified =
+                            isVerified(
+                                newNickname
+                            );
+
+
+                        users.set(
+                            ws.userId,
+                            profile
+                        );
+
+
+                        nicknames.set(
+                            newKey,
+                            ws.userId
+                        );
+
+
+                        const online =
+                            onlineUsers.get(
+                                ws.userId
+                            );
+
+
+                        if (online) {
+
+                            online.profile =
+                                profile;
+                        }
+
+
+                        ws.nickname =
+                            newNickname;
+
 
                         send(
                             ws,
                             {
-                                type: "error",
-                                error:
-                                    "Сначала нужно войти."
+                                type:
+                                    "profile_ok",
+
+                                profile:
+                                    profileForClient(
+                                        profile,
+                                        true
+                                    )
                             }
                         );
+
+
+                        broadcastUsers();
+
 
                         return;
                     }
@@ -313,21 +806,21 @@ wss.on(
                         "history"
                     ) {
 
-                        const withUser =
+                        const targetId =
                             String(
-                                data.with || ""
+                                data.withId || ""
                             ).trim();
 
 
-                        if (!withUser) {
+                        if (!targetId) {
                             return;
                         }
 
 
                         const key =
                             conversationKey(
-                                ws.nickname,
-                                withUser
+                                ws.userId,
+                                targetId
                             );
 
 
@@ -342,12 +835,15 @@ wss.on(
                             {
                                 type:
                                     "history",
-                                with:
-                                    withUser,
+
+                                withId:
+                                    targetId,
+
                                 messages:
                                     history
                             }
                         );
+
 
                         return;
                     }
@@ -364,24 +860,47 @@ wss.on(
                         "message"
                     ) {
 
-                        const recipient =
+                        const targetId =
                             String(
-                                data.to || ""
+                                data.toId || ""
                             ).trim();
 
 
                         const text =
                             String(
                                 data.text || ""
-                            ).trim()
-                            .slice(0, 4000);
+                            )
+                                .trim()
+                                .slice(
+                                    0,
+                                    4000
+                                );
 
 
-                        if (!recipient) {
+                        if (
+                            !targetId ||
+                            !text
+                        ) {
                             return;
                         }
 
-                        if (!text) {
+
+                        const sender =
+                            users.get(
+                                ws.userId
+                            );
+
+
+                        const recipient =
+                            users.get(
+                                targetId
+                            );
+
+
+                        if (
+                            !sender ||
+                            !recipient
+                        ) {
                             return;
                         }
 
@@ -391,15 +910,27 @@ wss.on(
                             id:
                                 `${Date.now()}-${Math.random()}`,
 
+                            fromId:
+                                sender.id,
+
+                            toId:
+                                recipient.id,
+
                             from:
-                                ws.nickname,
+                                sender.nickname,
 
-                            to:
-                                recipient,
+                            fromDisplayName:
+                                sender.displayName,
 
-                            text:
+                            fromAvatar:
+                                sender.avatar || "",
 
-                                text,
+                            verified:
+                                Boolean(
+                                    sender.verified
+                                ),
+
+                            text,
 
                             time:
                                 new Date()
@@ -409,8 +940,8 @@ wss.on(
 
                         const key =
                             conversationKey(
-                                ws.nickname,
-                                recipient
+                                sender.id,
+                                recipient.id
                             );
 
 
@@ -438,8 +969,6 @@ wss.on(
                         );
 
 
-                        // максимум 500 сообщений на диалог
-
                         if (
                             conversation.length >
                             500
@@ -449,33 +978,26 @@ wss.on(
                         }
 
 
-                        const recipientKey =
-                            normalizeNickname(
-                                recipient
-                            );
-
-
-                        const recipientUser =
-                            onlineUsers.get(
-                                recipientKey
-                            );
-
-
                         /*
-                        =================================
-                        SEND TO RECIPIENT
-                        =================================
+                        Получатель
                         */
 
+                        const recipientOnline =
+                            onlineUsers.get(
+                                recipient.id
+                            );
+
+
                         if (
-                            recipientUser
+                            recipientOnline
                         ) {
 
                             send(
-                                recipientUser.ws,
+                                recipientOnline.ws,
                                 {
                                     type:
                                         "message",
+
                                     message
                                 }
                             );
@@ -483,9 +1005,7 @@ wss.on(
 
 
                         /*
-                        =================================
-                        SEND TO SENDER
-                        =================================
+                        Отправитель
                         */
 
                         send(
@@ -493,6 +1013,7 @@ wss.on(
                             {
                                 type:
                                     "message",
+
                                 message
                             }
                         );
@@ -513,42 +1034,46 @@ wss.on(
                         "typing"
                     ) {
 
-                        const recipient =
+                        const targetId =
                             String(
-                                data.to || ""
+                                data.toId || ""
                             ).trim();
 
 
-                        const recipientKey =
-                            normalizeNickname(
-                                recipient
-                            );
-
-
-                        const recipientUser =
-                            onlineUsers.get(
-                                recipientKey
-                            );
-
-
-                        if (
-                            recipientUser
-                        ) {
-
-                            send(
-                                recipientUser.ws,
-                                {
-                                    type:
-                                        "typing",
-                                    from:
-                                        ws.nickname,
-                                    isTyping:
-                                        Boolean(
-                                            data.isTyping
-                                        )
-                                }
-                            );
+                        if (!targetId) {
+                            return;
                         }
+
+
+                        const target =
+                            onlineUsers.get(
+                                targetId
+                            );
+
+
+                        if (!target) {
+                            return;
+                        }
+
+
+                        send(
+                            target.ws,
+                            {
+                                type:
+                                    "typing",
+
+                                fromId:
+                                    ws.userId,
+
+                                fromNickname:
+                                    ws.nickname,
+
+                                isTyping:
+                                    Boolean(
+                                        data.isTyping
+                                    )
+                            }
+                        );
 
 
                         return;
@@ -567,7 +1092,7 @@ wss.on(
 
         /*
         =============================================
-        DISCONNECT
+        CLOSE
         =============================================
         */
 
@@ -575,24 +1100,16 @@ wss.on(
             "close",
             () => {
 
-                if (!ws.nickname) {
+                if (!ws.userId) {
                     return;
                 }
 
 
-                const key =
-                    normalizeNickname(
-                        ws.nickname
-                    );
-
-
                 const current =
                     onlineUsers.get(
-                        key
+                        ws.userId
                     );
 
-
-                // Только если это тот же connection
 
                 if (
                     current &&
@@ -600,16 +1117,16 @@ wss.on(
                 ) {
 
                     onlineUsers.delete(
-                        key
+                        ws.userId
                     );
+
+
+                    broadcastUsers();
                 }
 
 
-                broadcastUserList();
-
-
                 console.log(
-                    `${ws.nickname} disconnected`
+                    `${ws.nickname || "User"} disconnected`
                 );
             }
         );
@@ -628,14 +1145,19 @@ app.get(
     (req, res) => {
 
         res.json({
+
             online:
                 true,
+
+            users:
+                users.size,
 
             onlineUsers:
                 onlineUsers.size,
 
-            knownUsers:
-                knownUsers.size
+            conversations:
+                conversations.size
+
         });
     }
 );
@@ -653,7 +1175,7 @@ server.listen(
     () => {
 
         console.log(
-            `My Chat running on port ${PORT}`
+            `My Chat v2 running on port ${PORT}`
         );
     }
 );
