@@ -16,14 +16,11 @@
     --background-1: #edf5fc;
     --background-2: #d6e4ef;
 
-    --sidebar:
-        rgba(251,253,255,0.84);
+    --glass:
+        rgba(255,255,255,0.68);
 
-    --panel:
-        rgba(255,255,255,0.73);
-
-    --panel-strong:
-        rgba(255,255,255,0.88);
+    --glass-strong:
+        rgba(255,255,255,0.82);
 
     --input:
         rgba(232,239,246,0.78);
@@ -53,25 +50,16 @@
 
 body.dark {
 
-    --text:
-        #f4f5f7;
+    --text: #f4f5f7;
+    --secondary: #a3abb5;
 
-    --secondary:
-        #a3abb5;
+    --background-1: #151a20;
+    --background-2: #0e1217;
 
-    --background-1:
-        #151a20;
-
-    --background-2:
-        #0e1217;
-
-    --sidebar:
-        rgba(21,26,32,0.86);
-
-    --panel:
+    --glass:
         rgba(30,36,43,0.72);
 
-    --panel-strong:
+    --glass-strong:
         rgba(36,43,51,0.88);
 
     --input:
@@ -102,13 +90,10 @@ body.dark {
 
 body.no-glass {
 
-    --sidebar:
-        rgba(248,250,252,1);
-
-    --panel:
+    --glass:
         rgba(255,255,255,1);
 
-    --panel-strong:
+    --glass-strong:
         rgba(255,255,255,1);
 
     --input:
@@ -123,13 +108,10 @@ body.no-glass {
 
 body.dark.no-glass {
 
-    --sidebar:
-        #1a1f25;
-
-    --panel:
+    --glass:
         #20262d;
 
-    --panel-strong:
+    --glass-strong:
         #252c34;
 
     --input:
@@ -150,10 +132,14 @@ body.dark.no-glass {
 html,
 body {
 
-    width: 100%;
-    height: 100%;
+    width:
+        100%;
 
-    margin: 0;
+    height:
+        100%;
+
+    margin:
+        0;
 }
 
 body {
@@ -168,7 +154,8 @@ body {
         Arial,
         sans-serif;
 
-    color: var(--text);
+    color:
+        var(--text);
 
     background:
         linear-gradient(
@@ -177,9 +164,11 @@ body {
             var(--background-2)
         );
 
-    overflow: hidden;
+    overflow:
+        hidden;
 
-    overscroll-behavior: none;
+    overscroll-behavior:
+        none;
 }
 
 
@@ -189,12 +178,17 @@ body {
 
 .app {
 
-    width: 100%;
-    height: 100dvh;
+    width:
+        100%;
 
-    display: flex;
+    height:
+        100dvh;
 
-    overflow: hidden;
+    display:
+        flex;
+
+    overflow:
+        hidden;
 }
 
 
@@ -208,7 +202,7 @@ body {
         linear-gradient(
             180deg,
             rgba(255,255,255,0.75),
-            rgba(255,255,255,0.56)
+            rgba(255,255,255,0.55)
         );
 
     border:
@@ -244,27 +238,37 @@ body.dark .glass {
 
 .sidebar {
 
-    width: 365px;
-    min-width: 365px;
+    width:
+        365px;
 
-    height: 100%;
+    min-width:
+        365px;
 
-    display: flex;
-    flex-direction: column;
+    height:
+        100%;
 
-    border-radius: 0;
+    display:
+        flex;
 
-    border-top: 0;
-    border-bottom: 0;
-    border-left: 0;
+    flex-direction:
+        column;
 
-    z-index: 50;
+    border-radius:
+        0;
+
+    border-top:
+        0;
+
+    border-bottom:
+        0;
+
+    border-left:
+        0;
+
+    z-index:
+        50;
 }
 
-
-/* =====================================================
-   SIDEBAR TOP
-===================================================== */
 
 .sidebar-top {
 
@@ -280,12 +284,13 @@ body.dark .glass {
 
 
 /* =====================================================
-   PROFILE CARD
+   PROFILE
 ===================================================== */
 
 .profile-card {
 
-    min-height: 58px;
+    min-height:
+        58px;
 
     display:
         flex;
@@ -469,11 +474,14 @@ body.dark .glass {
         11px;
 
     font-weight:
-        800;
+        900;
+
+    line-height:
+        1;
 
     box-shadow:
         0 2px 8px
-        rgba(51,144,236,0.25);
+        rgba(51,144,236,0.30);
 }
 
 
@@ -526,6 +534,7 @@ body.dark .glass {
     backdrop-filter:
         blur(15px);
 }
+
 
 body.dark .round-button {
 
@@ -618,15 +627,8 @@ body.dark .round-button {
 }
 
 
-.search-box input::placeholder {
-
-    color:
-        var(--secondary);
-}
-
-
 /* =====================================================
-   SECTION
+   USERS
 ===================================================== */
 
 .section-title {
@@ -647,13 +649,9 @@ body.dark .round-button {
         uppercase;
 
     letter-spacing:
-        0.05em;
+        .05em;
 }
 
-
-/* =====================================================
-   USER LIST
-===================================================== */
 
 .user-list {
 
@@ -711,8 +709,8 @@ body.dark .round-button {
         pointer;
 
     transition:
-        background 0.15s ease,
-        transform 0.15s ease;
+        background .15s ease,
+        transform .15s ease;
 }
 
 
@@ -723,8 +721,7 @@ body.dark .round-button {
 }
 
 
-body.dark
-.user-item:hover {
+body.dark .user-item:hover {
 
     background:
         rgba(255,255,255,0.06);
@@ -734,21 +731,21 @@ body.dark
 .user-item:active {
 
     transform:
-        scale(0.985);
+        scale(.985);
 }
 
 
 .user-item.active {
 
     background:
-        rgba(51,144,236,0.93);
+        rgba(51,144,236,.93);
 
     color:
         white;
 
     box-shadow:
         0 5px 18px
-        rgba(51,144,236,0.20);
+        rgba(51,144,236,.20);
 }
 
 
@@ -794,14 +791,12 @@ body.dark
 
     background:
         #2fc967;
-}
 
-
-.user-item.active
-.online-dot {
-
-    border-color:
-        #3390ec;
+    animation:
+        onlinePulse
+        2s
+        ease-in-out
+        infinite;
 }
 
 
@@ -825,9 +820,6 @@ body.dark
 
     gap:
         5px;
-
-    min-width:
-        0;
 }
 
 
@@ -879,7 +871,7 @@ body.dark
 .user-username {
 
     color:
-        rgba(255,255,255,0.76);
+        rgba(255,255,255,.76);
 }
 
 
@@ -888,11 +880,14 @@ body.dark
     margin-top:
         3px;
 
+    color:
+        var(--secondary);
+
     font-size:
         12px;
 
-    color:
-        var(--secondary);
+    transition:
+        color .2s ease;
 }
 
 
@@ -900,7 +895,7 @@ body.dark
 .user-status {
 
     color:
-        rgba(255,255,255,0.78);
+        rgba(255,255,255,.8);
 }
 
 
@@ -909,11 +904,11 @@ body.dark
     padding:
         30px 20px;
 
-    text-align:
-        center;
-
     color:
         var(--secondary);
+
+    text-align:
+        center;
 
     font-size:
         14px;
@@ -924,7 +919,7 @@ body.dark
 
 
 /* =====================================================
-   MAIN CHAT
+   CHAT
 ===================================================== */
 
 .chat {
@@ -977,12 +972,12 @@ body.dark
         none;
 
     opacity:
-        0.17;
+        .17;
 
     background-image:
         radial-gradient(
             circle,
-            rgba(255,255,255,0.65)
+            rgba(255,255,255,.65)
             1px,
             transparent 1px
         );
@@ -993,7 +988,7 @@ body.dark
 
 
 /* =====================================================
-   HEADER
+   CHAT HEADER
 ===================================================== */
 
 .chat-header {
@@ -1064,7 +1059,7 @@ body.dark
         50%;
 
     background:
-        rgba(255,255,255,0.48);
+        rgba(255,255,255,.48);
 
     color:
         var(--secondary);
@@ -1087,14 +1082,14 @@ body.dark
 .header-button {
 
     background:
-        rgba(255,255,255,0.07);
+        rgba(255,255,255,.07);
 }
 
 
 .header-button:active {
 
     transform:
-        scale(0.94);
+        scale(.94);
 }
 
 
@@ -1116,11 +1111,11 @@ body.dark
 
 .header-info {
 
-    flex:
-        1;
-
     min-width:
         0;
+
+    flex:
+        1;
 }
 
 
@@ -1162,6 +1157,108 @@ body.dark
 
     font-size:
         12px;
+
+    transition:
+        opacity .2s ease,
+        color .2s ease;
+}
+
+
+/* =====================================================
+   TYPING
+===================================================== */
+
+.typing-status {
+
+    animation:
+        typingFade
+        1.2s
+        ease-in-out
+        infinite;
+}
+
+
+.typing-status::after {
+
+    content:
+        "";
+
+    display:
+        inline-block;
+
+    width:
+        18px;
+
+    animation:
+        typingDots
+        1.2s
+        steps(4,end)
+        infinite;
+}
+
+
+@keyframes typingDots {
+
+    0% {
+        content:
+            "";
+    }
+
+    25% {
+        content:
+            ".";
+    }
+
+    50% {
+        content:
+            "..";
+    }
+
+    75%,
+    100% {
+        content:
+            "...";
+    }
+}
+
+
+@keyframes typingFade {
+
+    0%,
+    100% {
+        opacity:
+            .55;
+    }
+
+    50% {
+        opacity:
+            1;
+    }
+}
+
+
+@keyframes onlinePulse {
+
+    0%,
+    100% {
+
+        transform:
+            scale(1);
+
+        box-shadow:
+            0 0 0
+            rgba(47,201,103,0);
+    }
+
+    50% {
+
+        transform:
+            scale(1.15);
+
+        box-shadow:
+            0 0 0 5px
+            rgba(47,201,103,.12);
+    }
 }
 
 
@@ -1175,7 +1272,7 @@ body.dark
         relative;
 
     z-index:
-        4;
+        5;
 
     flex:
         1;
@@ -1238,7 +1335,7 @@ body.dark
 
     box-shadow:
         0 12px 30px
-        rgba(40,125,220,0.24);
+        rgba(40,125,220,.24);
 }
 
 
@@ -1290,7 +1387,7 @@ body.dark
         14px;
 
     background:
-        rgba(255,255,255,0.60);
+        rgba(255,255,255,.60);
 
     color:
         var(--blue-dark);
@@ -1313,7 +1410,7 @@ body.dark
 .find-button {
 
     background:
-        rgba(255,255,255,0.08);
+        rgba(255,255,255,.08);
 
     color:
         #69b5ff;
@@ -1365,6 +1462,11 @@ body.dark
 
     display:
         flex;
+
+    animation:
+        messageAppear
+        .16s
+        ease-out;
 }
 
 
@@ -1440,7 +1542,7 @@ body.dark
         center;
 
     gap:
-        5px;
+        4px;
 
     margin-bottom:
         2px;
@@ -1459,10 +1561,10 @@ body.dark
 .message-author-badge {
 
     width:
-        15px;
+        14px;
 
     height:
-        15px;
+        14px;
 
     display:
         inline-flex;
@@ -1477,16 +1579,16 @@ body.dark
         50%;
 
     background:
-        var(--blue);
+        #3390ec;
 
     color:
         white;
 
     font-size:
-        9px;
+        8px;
 
     font-weight:
-        800;
+        900;
 }
 
 
@@ -1522,11 +1624,27 @@ body.dark
 }
 
 
-.message.outgoing
-.message-meta {
+@keyframes messageAppear {
 
-    color:
-        #6c8e65;
+    from {
+
+        opacity:
+            0;
+
+        transform:
+            translateY(5px)
+            scale(.985);
+    }
+
+    to {
+
+        opacity:
+            1;
+
+        transform:
+            translateY(0)
+            scale(1);
+    }
 }
 
 
@@ -1618,14 +1736,7 @@ body.dark
 .composer input:focus {
 
     border-color:
-        rgba(51,144,236,0.38);
-}
-
-
-.composer input::placeholder {
-
-    color:
-        var(--secondary);
+        rgba(51,144,236,.38);
 }
 
 
@@ -1665,7 +1776,7 @@ body.dark
         var(--border);
 
     background:
-        rgba(255,255,255,0.50);
+        rgba(255,255,255,.50);
 
     color:
         var(--secondary);
@@ -1685,15 +1796,11 @@ body.dark
 .composer-button {
 
     background:
-        rgba(255,255,255,0.07);
+        rgba(255,255,255,.07);
 }
 
 
 .send-button {
-
-    border:
-        1px solid
-        rgba(255,255,255,0.40);
 
     background:
         linear-gradient(
@@ -1705,12 +1812,16 @@ body.dark
     color:
         white;
 
+    border:
+        1px solid
+        rgba(255,255,255,.4);
+
     font-size:
         21px;
 
     box-shadow:
         0 7px 17px
-        rgba(35,127,220,0.28);
+        rgba(35,127,220,.28);
 }
 
 
@@ -1718,7 +1829,7 @@ body.dark
 .send-button:active {
 
     transform:
-        scale(0.91);
+        scale(.92);
 }
 
 
@@ -1769,9 +1880,6 @@ body.dark
 
 .emoji-panel button {
 
-    width:
-        100%;
-
     height:
         32px;
 
@@ -1784,26 +1892,20 @@ body.dark
     background:
         transparent;
 
-    cursor:
-        pointer;
-
     font-size:
         20px;
-}
 
-
-.emoji-panel button:hover {
-
-    background:
-        rgba(255,255,255,0.46);
+    cursor:
+        pointer;
 }
 
 
 /* =====================================================
-   MODAL
+   SETTINGS MODAL
 ===================================================== */
 
-.modal-backdrop {
+.modal-backdrop,
+.login-overlay {
 
     position:
         fixed;
@@ -1827,7 +1929,7 @@ body.dark
         20px;
 
     background:
-        rgba(20,35,50,0.25);
+        rgba(20,35,50,.25);
 
     -webkit-backdrop-filter:
         blur(10px);
@@ -1840,7 +1942,7 @@ body.dark
 .settings-modal {
 
     width:
-        min(560px, 100%);
+        min(560px,100%);
 
     max-height:
         min(
@@ -1905,9 +2007,7 @@ body.dark
 }
 
 
-/* =====================================================
-   SETTINGS PROFILE
-===================================================== */
+/* SETTINGS PROFILE */
 
 .settings-profile {
 
@@ -1934,7 +2034,7 @@ body.dark
         18px;
 
     background:
-        rgba(255,255,255,0.24);
+        rgba(255,255,255,.24);
 }
 
 
@@ -1942,7 +2042,7 @@ body.dark
 .settings-profile {
 
     background:
-        rgba(255,255,255,0.04);
+        rgba(255,255,255,.04);
 }
 
 
@@ -2049,9 +2149,7 @@ body.dark
 }
 
 
-/* =====================================================
-   SETTINGS SECTION
-===================================================== */
+/* SETTINGS SECTION */
 
 .settings-section {
 
@@ -2060,7 +2158,7 @@ body.dark
 
     border-top:
         1px solid
-        rgba(130,145,160,0.13);
+        rgba(130,145,160,.13);
 }
 
 
@@ -2109,23 +2207,11 @@ body.dark
 
     font-size:
         15px;
-
-    -webkit-backdrop-filter:
-        blur(15px);
-
-    backdrop-filter:
-        blur(15px);
 }
 
 
-.settings-input:focus {
-
-    border-color:
-        rgba(51,144,236,0.38);
-}
-
-
-.settings-label + .settings-input {
+.settings-label
++ .settings-input {
 
     margin-bottom:
         14px;
@@ -2133,9 +2219,6 @@ body.dark
 
 
 .username-input-wrapper {
-
-    position:
-        relative;
 
     display:
         flex;
@@ -2165,22 +2248,16 @@ body.dark
 
     color:
         var(--secondary);
-
-    font-size:
-        15px;
 }
 
 
-.username-input-wrapper .settings-input {
-
-    height:
-        42px;
-
-    padding-left:
-        3px;
+.username-input {
 
     border:
         0;
+
+    height:
+        42px;
 }
 
 
@@ -2194,15 +2271,10 @@ body.dark
 
     font-size:
         11px;
-
-    line-height:
-        1.45;
 }
 
 
-/* =====================================================
-   THEME
-===================================================== */
+/* THEME */
 
 .theme-buttons {
 
@@ -2238,9 +2310,6 @@ body.dark
     cursor:
         pointer;
 
-    font-size:
-        14px;
-
     font-weight:
         650;
 }
@@ -2249,19 +2318,17 @@ body.dark
 .theme-button.active {
 
     border-color:
-        rgba(51,144,236,0.45);
+        rgba(51,144,236,.45);
 
     background:
-        rgba(51,144,236,0.15);
+        rgba(51,144,236,.15);
 
     color:
         var(--blue-dark);
 }
 
 
-/* =====================================================
-   SETTING ROW
-===================================================== */
+/* SETTING */
 
 .setting-row {
 
@@ -2302,9 +2369,7 @@ body.dark
 }
 
 
-/* =====================================================
-   SWITCH
-===================================================== */
+/* SWITCH */
 
 .switch {
 
@@ -2343,17 +2408,17 @@ body.dark
     inset:
         0;
 
-    border-radius:
-        20px;
-
     background:
         #c7ced6;
+
+    border-radius:
+        20px;
 
     cursor:
         pointer;
 
     transition:
-        0.2s ease;
+        .2s ease;
 }
 
 
@@ -2385,10 +2450,10 @@ body.dark
 
     box-shadow:
         0 2px 5px
-        rgba(0,0,0,0.18);
+        rgba(0,0,0,.18);
 
     transition:
-        0.2s ease;
+        .2s ease;
 }
 
 
@@ -2408,11 +2473,10 @@ body.dark
 }
 
 
-/* =====================================================
-   SAVE
-===================================================== */
+/* SAVE */
 
-.save-profile-button {
+.save-profile-button,
+.login-button {
 
     width:
         100%;
@@ -2420,12 +2484,9 @@ body.dark
     min-height:
         46px;
 
-    margin-top:
-        10px;
-
     border:
         1px solid
-        rgba(255,255,255,0.35);
+        rgba(255,255,255,.35);
 
     border-radius:
         14px;
@@ -2440,9 +2501,6 @@ body.dark
     color:
         white;
 
-    font-size:
-        15px;
-
     font-weight:
         700;
 
@@ -2451,7 +2509,17 @@ body.dark
 
     box-shadow:
         0 7px 18px
-        rgba(35,126,220,0.22);
+        rgba(35,126,220,.22);
+}
+
+
+.save-profile-button {
+
+    margin-top:
+        10px;
+
+    font-size:
+        15px;
 }
 
 
@@ -2463,14 +2531,244 @@ body.dark
     margin-top:
         8px;
 
-    color:
-        #e14d4d;
-
     text-align:
         center;
 
+    color:
+        #e34f4f;
+
     font-size:
         12px;
+}
+
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
+.login-overlay {
+
+    z-index:
+        1000;
+}
+
+
+.login-card {
+
+    width:
+        min(420px,100%);
+
+    padding:
+        28px;
+
+    border-radius:
+        28px;
+
+    text-align:
+        center;
+}
+
+
+.login-logo {
+
+    width:
+        76px;
+
+    height:
+        76px;
+
+    margin:
+        0 auto 17px;
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    border-radius:
+        50%;
+
+    background:
+        linear-gradient(
+            145deg,
+            #62baff,
+            #247bde
+        );
+
+    color:
+        white;
+
+    font-size:
+        32px;
+
+    box-shadow:
+        0 12px 30px
+        rgba(36,123,222,.24);
+}
+
+
+.login-title {
+
+    font-size:
+        24px;
+
+    font-weight:
+        750;
+}
+
+
+.login-subtitle {
+
+    margin:
+        7px auto 22px;
+
+    max-width:
+        320px;
+
+    color:
+        var(--secondary);
+
+    font-size:
+        14px;
+
+    line-height:
+        1.5;
+}
+
+
+.login-label {
+
+    display:
+        block;
+
+    margin:
+        12px 0 6px;
+
+    text-align:
+        left;
+
+    color:
+        var(--secondary);
+
+    font-size:
+        12px;
+
+    font-weight:
+        650;
+}
+
+
+.login-input {
+
+    width:
+        100%;
+
+    height:
+        46px;
+
+    padding:
+        0 13px;
+
+    border:
+        1px solid
+        var(--border);
+
+    border-radius:
+        14px;
+
+    outline:
+        none;
+
+    background:
+        var(--input);
+
+    color:
+        var(--text);
+
+    font-size:
+        16px;
+}
+
+
+.login-username {
+
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    height:
+        46px;
+
+    padding-left:
+        13px;
+
+    border:
+        1px solid
+        var(--border);
+
+    border-radius:
+        14px;
+
+    background:
+        var(--input);
+}
+
+
+.login-username > span {
+
+    color:
+        var(--secondary);
+
+    font-size:
+        16px;
+}
+
+
+.login-username .login-input {
+
+    height:
+        44px;
+
+    padding-left:
+        4px;
+
+    border:
+        0;
+
+    background:
+        transparent;
+}
+
+
+.login-error {
+
+    min-height:
+        20px;
+
+    margin-top:
+        10px;
+
+    color:
+        #e34f4f;
+
+    font-size:
+        12px;
+}
+
+
+.login-button {
+
+    margin-top:
+        5px;
+
+    font-size:
+        15px;
 }
 
 
@@ -2489,31 +2787,6 @@ body.dark
    MOBILE
 ===================================================== */
 
-.sidebar-overlay {
-
-    display:
-        none;
-
-    position:
-        fixed;
-
-    inset:
-        0;
-
-    z-index:
-        45;
-
-    background:
-        rgba(20,35,50,0.25);
-
-    -webkit-backdrop-filter:
-        blur(5px);
-
-    backdrop-filter:
-        blur(5px);
-}
-
-
 @media (max-width: 700px) {
 
     .sidebar {
@@ -2531,7 +2804,7 @@ body.dark
             0;
 
         width:
-            min(90vw, 380px);
+            min(90vw,380px);
 
         min-width:
             0;
@@ -2541,26 +2814,13 @@ body.dark
 
         transition:
             transform
-            0.24s
+            .24s
             cubic-bezier(
                 .22,
                 .8,
                 .25,
                 1
             );
-
-        border-right:
-            1px solid
-            var(--border);
-
-        border-top:
-            0;
-
-        border-bottom:
-            0;
-
-        border-left:
-            0;
     }
 
 
@@ -2591,12 +2851,6 @@ body.dark
                 7px +
                 env(safe-area-inset-top)
             );
-
-        padding-left:
-            8px;
-
-        padding-right:
-            8px;
     }
 
 
@@ -2607,20 +2861,6 @@ body.dark
 
         height:
             40px;
-    }
-
-
-    .header-name {
-
-        font-size:
-            15px;
-    }
-
-
-    .header-status {
-
-        font-size:
-            11px;
     }
 
 
@@ -2635,9 +2875,6 @@ body.dark
 
         max-width:
             89%;
-
-        padding:
-            7px 9px 6px;
 
         border-radius:
             14px;
@@ -2715,13 +2952,6 @@ body.dark
     }
 
 
-    .empty-screen {
-
-        padding:
-            22px;
-    }
-
-
     .settings-modal {
 
         align-self:
@@ -2732,18 +2962,11 @@ body.dark
 
         max-height:
             calc(
-                100dvh -
-                10px
+                100dvh - 10px
             );
-
-        padding:
-            16px;
 
         border-radius:
             26px 26px 0 0;
-
-        margin:
-            0;
     }
 
 
@@ -2755,11 +2978,60 @@ body.dark
         padding:
             0;
     }
+
+
+    .login-overlay {
+
+        align-items:
+            flex-end;
+
+        padding:
+            0;
+    }
+
+
+    .login-card {
+
+        width:
+            100%;
+
+        padding:
+            24px 18px;
+
+        padding-bottom:
+            max(
+                20px,
+                calc(
+                    20px +
+                    env(
+                        safe-area-inset-bottom
+                    )
+                )
+            );
+
+        border-radius:
+            28px 28px 0 0;
+    }
+
+
+    .login-overlay {
+
+        background:
+            rgba(230,242,252,.36);
+
+        -webkit-backdrop-filter:
+            blur(26px)
+            saturate(180%);
+
+        backdrop-filter:
+            blur(26px)
+            saturate(180%);
+    }
 }
 
 
 /* =====================================================
-   IPHONE GLASS
+   IOS LIQUID GLASS
 ===================================================== */
 
 @media (max-width: 700px) {
@@ -2781,17 +3053,17 @@ body.dark
         background:
             linear-gradient(
                 180deg,
-                rgba(255,255,255,0.48),
-                rgba(255,255,255,0.26)
+                rgba(255,255,255,.46),
+                rgba(255,255,255,.24)
             );
 
         border:
             1px solid
-            rgba(255,255,255,0.72);
+            rgba(255,255,255,.72);
 
         box-shadow:
             0 8px 30px
-            rgba(43,72,100,0.09);
+            rgba(43,72,100,.09);
 
         -webkit-backdrop-filter:
             blur(34px)
@@ -2806,36 +3078,28 @@ body.dark
     body.ios .chat-header {
 
         background:
-            rgba(255,255,255,0.40);
+            rgba(255,255,255,.39);
     }
 
 
     body.ios .composer {
 
         background:
-            rgba(255,255,255,0.40);
+            rgba(255,255,255,.39);
     }
 
 
     body.ios .composer input {
 
         background:
-            rgba(255,255,255,0.44);
-    }
-
-
-    body.ios .header-button,
-    body.ios .composer-button {
-
-        background:
-            rgba(255,255,255,0.40);
+            rgba(255,255,255,.43);
     }
 
 
     body.ios .sidebar {
 
         background:
-            rgba(249,252,255,0.55);
+            rgba(249,252,255,.55);
 
         -webkit-backdrop-filter:
             blur(35px)
@@ -2849,7 +3113,7 @@ body.dark
 
 
 /* =====================================================
-   IPHONE DARK GLASS
+   IOS DARK GLASS
 ===================================================== */
 
 @media (max-width: 700px) {
@@ -2870,13 +3134,13 @@ body.dark
         background:
             linear-gradient(
                 180deg,
-                rgba(35,42,50,0.50),
-                rgba(22,28,35,0.37)
+                rgba(35,42,50,.50),
+                rgba(22,28,35,.37)
             );
 
         border:
             1px solid
-            rgba(255,255,255,0.11);
+            rgba(255,255,255,.11);
 
         -webkit-backdrop-filter:
             blur(34px)
@@ -2891,28 +3155,20 @@ body.dark
     body.dark.ios .sidebar {
 
         background:
-            rgba(20,26,33,0.55);
+            rgba(20,26,33,.55);
     }
 
 
     body.dark.ios .composer input {
 
         background:
-            rgba(31,38,46,0.47);
-    }
-
-
-    body.dark.ios .header-button,
-    body.dark.ios .composer-button {
-
-        background:
-            rgba(255,255,255,0.07);
+            rgba(31,38,46,.47);
     }
 }
 
 
 /* =====================================================
-   SMALL IPHONE
+   SMALL PHONES
 ===================================================== */
 
 @media (max-width: 390px) {
@@ -2966,7 +3222,7 @@ body.dark
 
 
 /* =====================================================
-   SUPPORT DETECTION
+   NO BACKDROP FALLBACK
 ===================================================== */
 
 @supports not (
@@ -2976,7 +3232,7 @@ body.dark
     .glass {
 
         background:
-            var(--panel);
+            var(--glass);
     }
 }
 
@@ -2992,6 +3248,9 @@ body.dark
     *,
     *::before,
     *::after {
+
+        animation:
+            none !important;
 
         transition:
             none !important;
