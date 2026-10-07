@@ -46,7 +46,9 @@ const chatItem =
 ===================================================== */
 
 let username =
-    localStorage.getItem("chat_username");
+    localStorage.getItem(
+        "chat_username"
+    );
 
 if (!username) {
 
@@ -97,33 +99,24 @@ function connect() {
             : "ws:";
 
 
-    const socketUrl =
-        `${protocol}//${location.host}/ws`;
-
-
     socket =
-        new WebSocket(socketUrl);
+        new WebSocket(
+            `${protocol}//${location.host}/ws`
+        );
 
-
-    /* CONNECTED */
 
     socket.addEventListener(
         "open",
         () => {
 
-            console.log(
-                "WebSocket connected"
-            );
-
             statusElement.textContent =
                 "в сети";
 
-            reconnectDelay = 1000;
+            reconnectDelay =
+                1000;
         }
     );
 
-
-    /* MESSAGE */
 
     socket.addEventListener(
         "message",
@@ -137,8 +130,6 @@ function connect() {
                     );
 
 
-                /* HISTORY */
-
                 if (
                     data.type ===
                     "history"
@@ -148,13 +139,15 @@ function connect() {
                         "";
 
 
-                    data.messages.forEach(
-                        (message) => {
-                            addMessage(
-                                message
-                            );
-                        }
-                    );
+                    for (
+                        const message
+                        of data.messages
+                    ) {
+
+                        addMessage(
+                            message
+                        );
+                    }
 
 
                     const last =
@@ -171,8 +164,6 @@ function connect() {
                     scrollToBottom();
                 }
 
-
-                /* NEW MESSAGE */
 
                 if (
                     data.type ===
@@ -195,15 +186,12 @@ function connect() {
             } catch (error) {
 
                 console.error(
-                    "Message parsing error:",
                     error
                 );
             }
         }
     );
 
-
-    /* CLOSED */
 
     socket.addEventListener(
         "close",
@@ -218,7 +206,6 @@ function connect() {
 
                     connect();
 
-
                     reconnectDelay =
                         Math.min(
                             reconnectDelay * 2,
@@ -232,15 +219,9 @@ function connect() {
     );
 
 
-    /* ERROR */
-
     socket.addEventListener(
         "error",
         () => {
-
-            console.log(
-                "WebSocket error"
-            );
 
             statusElement.textContent =
                 "ошибка соединения";
@@ -266,16 +247,10 @@ function addMessage(message) {
         username;
 
 
-    if (mine) {
-
-        row.className =
-            "message-row outgoing";
-
-    } else {
-
-        row.className =
-            "message-row incoming";
-    }
+    row.className =
+        mine
+            ? "message-row outgoing"
+            : "message-row incoming";
 
 
     const bubble =
@@ -284,19 +259,11 @@ function addMessage(message) {
         );
 
 
-    if (mine) {
+    bubble.className =
+        mine
+            ? "message outgoing"
+            : "message incoming";
 
-        bubble.className =
-            "message outgoing";
-
-    } else {
-
-        bubble.className =
-            "message incoming";
-    }
-
-
-    /* USERNAME */
 
     if (!mine) {
 
@@ -305,16 +272,14 @@ function addMessage(message) {
                 "div"
             );
 
-
         author.className =
             "message-author";
 
-
         author.textContent =
             String(
-                message.username || "Guest"
+                message.username ||
+                "Guest"
             );
-
 
         bubble.appendChild(
             author
@@ -322,17 +287,13 @@ function addMessage(message) {
     }
 
 
-    /* TEXT */
-
     const text =
         document.createElement(
             "span"
         );
 
-
     text.className =
         "message-text";
-
 
     text.textContent =
         String(
@@ -340,18 +301,10 @@ function addMessage(message) {
         );
 
 
-    bubble.appendChild(
-        text
-    );
-
-
-    /* TIME */
-
     const meta =
         document.createElement(
             "span"
         );
-
 
     meta.className =
         "message-meta";
@@ -363,7 +316,7 @@ function addMessage(message) {
         );
 
 
-    const time =
+    meta.textContent =
         date.toLocaleTimeString(
             [],
             {
@@ -373,28 +326,18 @@ function addMessage(message) {
         );
 
 
-    meta.textContent =
-        time;
+    bubble.appendChild(text);
 
+    bubble.appendChild(meta);
 
-    bubble.appendChild(
-        meta
-    );
+    row.appendChild(bubble);
 
-
-    row.appendChild(
-        bubble
-    );
-
-
-    messagesContainer.appendChild(
-        row
-    );
+    messagesContainer.appendChild(row);
 }
 
 
 /* =====================================================
-   CHAT PREVIEW
+   PREVIEW
 ===================================================== */
 
 function updateChatPreview(message) {
@@ -433,7 +376,7 @@ function updateChatPreview(message) {
 
 
 /* =====================================================
-   SEND MESSAGE
+   SEND
 ===================================================== */
 
 form.addEventListener(
@@ -469,19 +412,14 @@ form.addEventListener(
         socket.send(
             JSON.stringify({
                 type: "message",
-
-                username:
-                    username,
-
-                text:
-                    text
+                username: username,
+                text: text
             })
         );
 
 
         input.value =
             "";
-
 
         input.focus();
     }
@@ -683,6 +621,84 @@ document.addEventListener(
                 "open"
             );
         }
+    }
+);
+
+
+/* =====================================================
+   SWIPE FROM LEFT
+   открытие меню пальцем
+===================================================== */
+
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener(
+    "touchstart",
+    (event) => {
+
+        const touch =
+            event.touches[0];
+
+        touchStartX =
+            touch.clientX;
+
+        touchStartY =
+            touch.clientY;
+    },
+    {
+        passive: true
+    }
+);
+
+
+document.addEventListener(
+    "touchend",
+    (event) => {
+
+        const touch =
+            event.changedTouches[0];
+
+        const deltaX =
+            touch.clientX -
+            touchStartX;
+
+        const deltaY =
+            touch.clientY -
+            touchStartY;
+
+
+        const fromLeft =
+            touchStartX < 35;
+
+        const mostlyHorizontal =
+            Math.abs(deltaX) >
+            Math.abs(deltaY);
+
+
+        if (
+            fromLeft &&
+            mostlyHorizontal &&
+            deltaX > 70
+        ) {
+
+            openSidebar();
+        }
+
+
+        if (
+            sidebar.classList.contains(
+                "open"
+            ) &&
+            mostlyHorizontal &&
+            deltaX < -70
+        ) {
+
+            closeSidebar();
+        }
+    },
+    {
+        passive: true
     }
 );
 
