@@ -1,0 +1,139 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: white;
+}
+
+.app {
+    width: 100%;
+    max-width: 800px;
+    height: 100vh;
+    margin: 0 auto;
+
+    display: flex;
+    flex-direction: column;
+
+    background: #181818;
+}
+
+.header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #2b2b2b;
+    background: #202020;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.status {
+    margin-top: 5px;
+    font-size: 13px;
+    color: #888;
+}
+
+.messages {
+    flex: 1;
+    padding: 20px;
+
+    overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message {
+    max-width: 75%;
+    padding: 10px 13px;
+
+    background: #292929;
+    border-radius: 12px;
+
+    word-wrap: break-word;
+}
+
+.message .username {
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #aaa;
+}
+
+.message .text {
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.message .time {
+    margin-top: 5px;
+    font-size: 11px;
+    color: #777;
+}
+
+.input-area {
+    display: flex;
+    gap: 10px;
+
+    padding: 15px;
+
+    border-top: 1px solid #2b2b2b;
+    background: #202020;
+}
+
+#messageInput {
+    flex: 1;
+
+    padding: 12px 14px;
+
+    border: 1px solid #383838;
+    border-radius: 10px;
+
+    background: #292929;
+    color: white;
+
+    outline: none;
+}
+
+#messageInput:focus {
+    border-color: #666;
+}
+
+button {
+    padding: 12px 18px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: #fff;
+    color: #111;
+
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+@media (max-width: 600px) {
+
+    .message {
+        max-width: 90%;
+    }
+
+    .input-area {
+        padding: 10px;
+    }
+
+    button {
+        padding: 12px;
+    }
+
+}
