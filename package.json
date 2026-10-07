@@ -1,7 +1,7 @@
 {
   "name": "my-chat",
-  "version": "2.0.0",
-  "description": "Modern private realtime messenger",
+  "version": "3.0.0",
+  "description": "Private realtime messenger",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
