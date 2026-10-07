@@ -1,7 +1,7 @@
 {
   "name": "my-chat",
   "version": "1.0.0",
-  "description": "Simple realtime chat",
+  "description": "Telegram-style realtime chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
