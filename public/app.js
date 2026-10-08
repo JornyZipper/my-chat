@@ -39,6 +39,11 @@ function haptic(ms = 10) {
   if (navigator.vibrate) navigator.vibrate(ms);
 }
 
+function makeClientMessageId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function authHeaders() {
   return {"Content-Type": "application/json", "Authorization": `Bearer ${token}`};
 }
@@ -112,10 +117,14 @@ ui.loginTab.onclick = () => setAuthMode("login");
 ui.registerTab.onclick = () => setAuthMode("register");
 ui.authUsername.addEventListener("input", updateClaimField);
 
+let authBusy = false;
+
 ui.authForm.addEventListener("submit", async e => {
   e.preventDefault();
+  if (authBusy || mode === "reset") return;
+  authBusy = true;
+  ui.authSubmit.disabled = true;
   ui.authError.textContent = "";
-  if (mode === "reset") return;
   try {
     if (mode === "register") {
       const body = {displayName: ui.authName.value.trim(), username: ui.authUsername.value.trim().replace(/^@/, ""), email: ui.authEmail.value.trim(), password: ui.authPassword.value, claimCode: ui.claimCode.value};
@@ -140,6 +149,9 @@ ui.authForm.addEventListener("submit", async e => {
     await startApp();
   } catch (err) {
     ui.authError.textContent = err.message;
+  } finally {
+    authBusy = false;
+    ui.authSubmit.disabled = false;
   }
 });
 
@@ -183,13 +195,42 @@ function updateMyProfileUI() {
 function connectSocket() {
   clearTimeout(reconnectTimer);
   if (!token) return;
+
+  // Не оставляем старое соединение, если приложение пытается подключиться повторно.
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    try { socket.close(); } catch {}
+  }
+
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  socket = new WebSocket(`${protocol}//${location.host}/ws`);
-  socket.addEventListener("open", () => socket.send(JSON.stringify({type: "auth", token})));
-  socket.addEventListener("message", e => {
-    let data; try { data = JSON.parse(e.data); } catch { return; }
-    if (data.type === "auth_ok") { profile = data.profile; updateMyProfileUI(); if (currentUser) updateChatHeader(); }
-    if (data.type === "users") { users = data.users || []; if (searchMode === "people" || ui.searchInput.value.trim()) renderPeople(); if (currentUser) { const u = users.find(x => x.id === currentUser.id); if (u) { currentUser = u; updateChatHeader(); } } }
+  const ws = new WebSocket(`${protocol}//${location.host}/ws`);
+  socket = ws;
+
+  ws.addEventListener("open", () => {
+    ws.send(JSON.stringify({ type: "auth", token }));
+  });
+
+  ws.addEventListener("message", e => {
+    let data;
+    try { data = JSON.parse(e.data); } catch { return; }
+
+    if (data.type === "auth_ok") {
+      profile = data.profile;
+      updateMyProfileUI();
+      if (currentUser) updateChatHeader();
+    }
+
+    if (data.type === "users") {
+      users = data.users || [];
+      if (searchMode === "people" || ui.searchInput.value.trim()) renderPeople();
+      if (currentUser) {
+        const u = users.find(x => x.id === currentUser.id);
+        if (u) {
+          currentUser = u;
+          updateChatHeader();
+        }
+      }
+    }
+
     if (data.type === "chat_refresh") refreshChats();
     if (data.type === "message") handleIncomingMessage(data.message);
     if (data.type === "typing") handleRemoteTyping(data);
@@ -197,11 +238,17 @@ function connectSocket() {
     if (data.type === "reaction") handleReaction(data);
     if (data.type === "error") toast(data.error || "Ошибка");
   });
-  socket.addEventListener("close", () => {
+
+  ws.addEventListener("close", () => {
+    // Старый сокет не должен запускать ещё один reconnect поверх нового.
+    if (socket !== ws) return;
     ui.chatHeaderStatus.textContent = "переподключение…";
     reconnectTimer = setTimeout(connectSocket, 1200);
   });
-  socket.addEventListener("error", () => { ui.chatHeaderStatus.textContent = "ошибка соединения"; });
+
+  ws.addEventListener("error", () => {
+    if (socket === ws) ui.chatHeaderStatus.textContent = "ошибка соединения";
+  });
 }
 
 function socketSend(data) {
@@ -286,13 +333,18 @@ async function openChat(user) {
   ui.openSidebar.classList.add("hidden");
   updateChatHeader();
   closeSidebar();
+
   try {
-    const data = await api(`/api/chats/${user.id}/messages`);
+    const data = await api(`/api/chats/${encodeURIComponent(user.id)}/messages`);
     currentConversationId = data.conversationId;
     currentMessages = data.messages || [];
     renderMessages();
     markRead();
-  } catch (e) { toast(e.message); closeCurrentChat(); }
+  } catch (e) {
+    console.error("Load chat error:", e);
+    toast(e.message);
+    closeCurrentChat();
+  }
 }
 
 function closeCurrentChat() {
@@ -394,10 +446,34 @@ function handleReceipts(data) { for(const id of data.messageIds || []){ const m=
 function handleReaction(data) { const m=currentMessages.find(x=>x.id===data.messageId); if(m){m.reactions=data.reactions || []; rerenderMessage(m.id);} }
 
 function handleIncomingMessage(m) {
-  const belongs = currentUser && (m.senderId === currentUser.id || m.senderId === profile.id && m.conversationId === currentConversationId);
-  if (belongs) { currentMessages.push(m); renderMessage(m); scrollBottom(); markRead(); }
+  const belongs = currentUser && (
+    m.senderId === currentUser.id ||
+    (m.senderId === profile.id && m.conversationId === currentConversationId)
+  );
+
+  if (belongs) {
+    const existingIndex = currentMessages.findIndex(x => x.id === m.id);
+
+    if (existingIndex >= 0) {
+      currentMessages[existingIndex] = m;
+      rerenderMessage(m.id);
+    } else {
+      currentMessages.push(m);
+      renderMessage(m);
+    }
+
+    scrollBottom();
+    markRead();
+  }
+
   refreshChats();
-  if (m.senderId !== profile.id && (!currentUser || m.senderId !== currentUser.id || document.hidden)) { notifyIncoming(m); }
+
+  if (
+    m.senderId !== profile.id &&
+    (!currentUser || m.senderId !== currentUser.id || document.hidden)
+  ) {
+    notifyIncoming(m);
+  }
 }
 
 function notifyIncoming(m) {
@@ -431,14 +507,35 @@ function stopTyping(){ clearTimeout(typingTimer); if(typingSent && currentUser) 
 ui.messageInput.addEventListener("blur", stopTyping);
 
 async function sendCurrentMessage(attachmentId=null) {
-  const text=ui.messageInput.value.trim();
+  const text = ui.messageInput.value.trim();
   if (!currentUser || (!text && !attachmentId)) return;
-  socketSend({type:"send",toUserId:currentUser.id,text,attachmentId,replyToId:replyTo?.id || null});
-  ui.messageInput.value=""; replyTo=null; ui.replyBar.classList.add("hidden"); stopTyping(); haptic(7);
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    toast("Нет соединения с сервером.");
+    return;
+  }
+
+  const clientMessageId = makeClientMessageId();
+
+  socketSend({
+    type: "send",
+    toUserId: currentUser.id,
+    text,
+    attachmentId,
+    replyToId: replyTo?.id || null,
+    clientMessageId
+  });
+
+  ui.messageInput.value = "";
+  replyTo = null;
+  ui.replyBar.classList.add("hidden");
+  stopTyping();
+  haptic(7);
 }
 
-ui.composer.addEventListener("submit", e => { e.preventDefault(); sendCurrentMessage(); });
-ui.messageInput.addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey){e.preventDefault(); sendCurrentMessage();} });
+ui.composer.addEventListener("submit", e => {
+  e.preventDefault();
+  sendCurrentMessage();
+});
 
 async function uploadAndSend(file) {
   if (!file || !currentUser) return;

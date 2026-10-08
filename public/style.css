@@ -32,3 +32,146 @@ body.dark .auth-screen{background:rgba(7,12,17,.62)}
 @media(max-width:700px){.mobile-only{display:flex}.sidebar{position:fixed;left:0;top:0;bottom:0;width:min(90vw,380px);min-width:0;transform:translateX(-105%);transition:transform .24s cubic-bezier(.22,.8,.25,1);box-shadow:8px 0 35px rgba(30,55,80,.20)}.sidebar.open{transform:translateX(0)}.chat-header{min-height:calc(59px + env(safe-area-inset-top));padding-top:calc(7px + env(safe-area-inset-top));padding-left:8px;padding-right:8px}.header-avatar{width:40px;height:40px}.header-name{font-size:15px}.header-status{font-size:11px}.header-actions .header-button:first-child{display:none}.messages{padding:10px 8px}.message{max-width:89%;padding:7px 9px 6px;border-radius:14px}.composer{min-height:calc(58px + env(safe-area-inset-bottom));padding:7px 8px;padding-bottom:max(7px,env(safe-area-inset-bottom));gap:4px}.composer input{height:43px}.composer-button,.send-button{width:40px;height:40px}.camera-button{display:flex}.emoji-panel{right:8px;bottom:calc(66px + env(safe-area-inset-bottom));width:calc(100vw - 16px);max-width:350px}.settings-modal{align-self:flex-end;width:100%;max-height:calc(100dvh - 10px);border-radius:26px 26px 0 0}.modal-backdrop{align-items:flex-end;padding:0}.auth-screen{align-items:flex-end;padding:0}.auth-card{width:100%;padding:24px 18px max(20px,calc(20px + env(safe-area-inset-bottom)));border-radius:28px 28px 0 0}.settings-profile{grid-template-columns:auto 1fr}.file-button{display:flex}.sidebar-overlay.visible{display:block}.toast{bottom:max(16px,calc(16px + env(safe-area-inset-bottom)))}body.ios .glass{background:linear-gradient(180deg,rgba(255,255,255,.47),rgba(255,255,255,.24));border-color:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(34px) saturate(190%);backdrop-filter:blur(34px) saturate(190%)}body.ios.dark .glass{background:linear-gradient(180deg,rgba(35,42,50,.50),rgba(22,28,35,.37));border-color:rgba(255,255,255,.11)}body.ios .chat-header,body.ios .composer{background:rgba(255,255,255,.40)}body.ios .composer input{background:rgba(255,255,255,.44)}body.ios.dark .chat-header,body.ios.dark .composer{background:rgba(24,30,37,.42)}body.ios.dark .composer input{background:rgba(31,38,46,.47)}}
 @media(max-width:390px){.header-button{width:38px;height:38px}.header-avatar{width:38px;height:38px}.composer-button{width:36px;height:36px}.send-button{width:39px;height:39px}.message{max-width:92%}.theme-buttons{grid-template-columns:1fr 1fr}.wallpaper-buttons{grid-template-columns:1fr 1fr}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+
+/* =====================================================
+   DARK THEME FIXES
+===================================================== */
+
+body.dark .round-button,
+body.dark .header-button,
+body.dark .composer-button {
+    background: rgba(255,255,255,.075);
+    color: #d9e0e7;
+}
+
+body.dark .auth-tabs,
+body.dark .sidebar-tabs {
+    background: rgba(255,255,255,.055);
+}
+
+body.dark .auth-tab.active,
+body.dark .sidebar-tab.active,
+body.dark .theme-button.active,
+body.dark .font-button.active {
+    background: rgba(51,144,236,.20);
+    color: #72baff;
+}
+
+body.dark .list-item:hover,
+body.dark .user-item:hover {
+    background: rgba(255,255,255,.055);
+}
+
+body.dark .reply-bar,
+body.dark .emoji-panel,
+body.dark .context-menu,
+body.dark .settings-profile,
+body.dark .reaction-row button {
+    background: rgba(28,35,43,.90);
+    color: var(--text);
+}
+
+body.dark .reply-bar {
+    border-color: rgba(255,255,255,.10);
+}
+
+body.dark .context-menu > button,
+body.dark .emoji-panel button {
+    color: var(--text);
+}
+
+body.dark .context-menu > button:hover,
+body.dark .emoji-panel button:hover,
+body.dark .reaction-row button:hover {
+    background: rgba(255,255,255,.08);
+}
+
+body.dark .find-button,
+body.dark .mini-button,
+body.dark .wallpaper-buttons button,
+body.dark .avatar-colors button,
+body.dark .settings-input,
+body.dark .login-input,
+body.dark .input-with-prefix,
+body.dark .search-box,
+body.dark .composer input {
+    color: var(--text);
+}
+
+body.dark .find-button {
+    background: rgba(255,255,255,.08);
+}
+
+body.dark .mini-button {
+    background: rgba(51,144,236,.16);
+}
+
+body.dark .danger-link,
+body.dark .danger-button {
+    color: #ff8b8d;
+}
+
+body.dark .settings-verified,
+body.dark .login-subtitle,
+body.dark .settings-subtitle,
+body.dark .profile-username,
+body.dark .profile-bio,
+body.dark .list-username,
+body.dark .list-meta,
+body.dark .user-status,
+body.dark .settings-hint,
+body.dark .setting-row small {
+    color: var(--secondary);
+}
+
+body.dark .modal-backdrop,
+body.dark .sidebar-overlay {
+    background: rgba(0,0,0,.48);
+}
+
+body.dark .auth-screen {
+    background: linear-gradient(
+        180deg,
+        rgba(8,13,18,.74),
+        rgba(8,13,18,.58)
+    );
+}
+
+body.dark .toast {
+    background: rgba(12,17,22,.92);
+}
+
+body.dark .status-dot {
+    border-color: #252c34;
+}
+
+body.dark .list-item.active .status-dot {
+    border-color: #3390ec;
+}
+
+body.dark .online-dot {
+    border-color: #252c34;
+}
+
+body.dark .message.incoming,
+body.dark .message.outgoing {
+    color: var(--text);
+}
+
+body.dark .message.outgoing .message-meta,
+body.dark .message.incoming .message-meta {
+    color: #9aa5af;
+}
+
+body.dark select option {
+    background: #20262d;
+    color: #f4f6f8;
+}
+
+/* Не даём браузеру Safari/Chrome сохранять белый фон у полей. */
+body.dark input,
+body.dark textarea,
+body.dark select {
+    color-scheme: dark;
+}

@@ -432,6 +432,7 @@ CREATE TABLE IF NOT EXISTS messages (
   attachment_id TEXT REFERENCES attachments(id) ON DELETE SET NULL,
   reply_to_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
   forwarded_from_id TEXT REFERENCES messages(id) ON DELETE SET NULL,
+  client_message_id TEXT,
   edited_at TIMESTAMPTZ,
   deleted_at TIMESTAMPTZ,
   delivered_at TIMESTAMPTZ,
@@ -439,6 +440,7 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id,created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS messages_sender_client_message_id_idx ON messages(sender_id,client_message_id) WHERE client_message_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS reactions (
   id TEXT PRIMARY KEY,
   message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
@@ -753,8 +755,8 @@ app.get("/api/users", authMiddleware, async (req, res) => {
 app.get("/api/chats", authMiddleware, async (req, res) => {
     try {
         const { rows } = await pool.query(
-            `SELECT c.id,
-                    u.id AS user_id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,
+            `SELECT c.id AS conversation_id,
+                    u.id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,
                     cm1.pinned,cm1.muted,
                     lm.id AS last_message_id,lm.text AS last_text,lm.created_at AS last_time,lm.sender_id AS last_sender_id,
                     (SELECT COUNT(*) FROM messages um
@@ -772,7 +774,7 @@ app.get("/api/chats", authMiddleware, async (req, res) => {
         );
         res.json({
             chats: rows.map(r => ({
-                conversationId: r.id,
+                conversationId: r.conversation_id,
                 user: publicProfile(r, req.userId),
                 pinned: Boolean(r.pinned),
                 muted: Boolean(r.muted),
@@ -1224,6 +1226,7 @@ wss.on("connection", ws => {
                 const text = clean(data.text, 4000);
                 const attachmentId = data.attachmentId ? String(data.attachmentId) : null;
                 const replyToId = data.replyToId ? String(data.replyToId) : null;
+                const clientMessageId = clean(data.clientMessageId, 80) || null;
 
                 if (!targetId || (!text && !attachmentId)) return;
                 if (targetId === userId) return;
@@ -1250,13 +1253,31 @@ wss.on("connection", ws => {
                 const conversationId = await ensureDirectConversation(userId, targetId);
                 const messageId = id();
                 const deliveredAt = isOnline(targetId) ? new Date() : null;
-                await pool.query(
-                    `INSERT INTO messages(id,conversation_id,sender_id,text,attachment_id,reply_to_id,delivered_at)
-                     VALUES($1,$2,$3,$4,$5,$6,$7)`,
-                    [messageId, conversationId, userId, text || null, attachmentId, replyToId, deliveredAt]
+
+                const inserted = await pool.query(
+                    `INSERT INTO messages(id,conversation_id,sender_id,text,attachment_id,reply_to_id,client_message_id,delivered_at)
+                     VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+                     ON CONFLICT DO NOTHING
+                     RETURNING id`,
+                    [messageId, conversationId, userId, text || null, attachmentId, replyToId, clientMessageId, deliveredAt]
                 );
 
-                const payload = await messagePayload(messageId);
+                // Защита от двойной отправки одного и того же clientMessageId.
+                if (!inserted.rowCount && clientMessageId) {
+                    const existing = await pool.query(
+                        `SELECT id FROM messages WHERE sender_id=$1 AND client_message_id=$2 LIMIT 1`,
+                        [userId, clientMessageId]
+                    );
+
+                    if (existing.rowCount) {
+                        const payload = await messagePayload(existing.rows[0].id);
+                        send(ws, { type: "message", message: payload });
+                        return;
+                    }
+                }
+
+                const actualMessageId = inserted.rows[0]?.id || messageId;
+                const payload = await messagePayload(actualMessageId);
                 await broadcastMessageToConversation(conversationId, payload);
                 await broadcastChatRefresh([userId, targetId]);
 
@@ -1298,6 +1319,8 @@ async function init() {
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_status TEXT NOT NULL DEFAULT 'online'").catch(() => {});
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_online TEXT NOT NULL DEFAULT 'everyone'").catch(() => {});
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_badge BOOLEAN NOT NULL DEFAULT FALSE").catch(() => {});
+    await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_message_id TEXT").catch(() => {});
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS messages_sender_client_message_id_idx ON messages(sender_id,client_message_id) WHERE client_message_id IS NOT NULL").catch(() => {});
     server.listen(PORT, "0.0.0.0", () => {
         console.log(`My Chat running on port ${PORT}`);
         if (!mailer) console.log("SMTP not configured: email sending is disabled.");
