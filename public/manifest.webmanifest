@@ -1,0 +1,12 @@
+{
+  "name": "My Chat",
+  "short_name": "My Chat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#edf4fb",
+  "theme_color": "#edf4fb",
+  "description": "Private realtime messenger",
+  "icons": [
+    {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
