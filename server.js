@@ -440,7 +440,6 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id,created_at);
-CREATE UNIQUE INDEX IF NOT EXISTS messages_sender_client_message_id_idx ON messages(sender_id,client_message_id) WHERE client_message_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS reactions (
   id TEXT PRIMARY KEY,
   message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
