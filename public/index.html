@@ -1,676 +1,205 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    >
-
-    <meta
-        name="theme-color"
-        content="#edf4fb"
-    >
-
-    <meta
-        name="apple-mobile-web-app-capable"
-        content="yes"
-    >
-
-    <meta
-        name="apple-mobile-web-app-status-bar-style"
-        content="default"
-    >
-
-    <meta
-        name="apple-mobile-web-app-title"
-        content="My Chat"
-    >
-
-    <title>My Chat</title>
-
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf4fb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="My Chat">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/style.css">
+<title>My Chat</title>
 </head>
-
 <body>
-
-<div class="app">
-
-
-    <!-- =========================================
-         SIDEBAR
-    ========================================== -->
-
-    <aside
-        class="sidebar glass"
-        id="sidebar"
-    >
-
-        <div class="sidebar-top">
-
-
-            <!-- PROFILE -->
-
-            <div class="profile-card">
-
-                <div
-                    class="profile-avatar"
-                    id="profileAvatar"
-                >
-                    ?
-                </div>
-
-
-                <div class="profile-main">
-
-                    <div class="profile-name-line">
-
-                        <span
-                            id="profileDisplayName"
-                        >
-                            Пользователь
-                        </span>
-
-                        <span
-                            class="verified-badge hidden"
-                            id="profileVerified"
-                        >
-                            ✓
-                        </span>
-
-                    </div>
-
-
-                    <div
-                        class="profile-username"
-                        id="profileUsername"
-                    >
-                        @username
-                    </div>
-
-                </div>
-
-
-                <button
-                    class="round-button"
-                    id="settingsButton"
-                    type="button"
-                    aria-label="Настройки"
-                >
-                    ⚙
-                </button>
-
-            </div>
-
-
-            <!-- SEARCH -->
-
-            <div class="search-box">
-
-                <span class="search-icon">
-                    ⌕
-                </span>
-
-                <input
-                    id="searchInput"
-                    type="search"
-                    placeholder="Найти по нику или имени"
-                    autocomplete="off"
-                >
-
-            </div>
-
-        </div>
-
-
-        <div class="section-title">
-            Пользователи
-        </div>
-
-
-        <div
-            class="user-list"
-            id="userList"
-        >
-
-            <div class="empty-users">
-                Пока никого нет
-            </div>
-
-        </div>
-
-    </aside>
-
-
-    <!-- OVERLAY -->
-
-    <div
-        class="sidebar-overlay"
-        id="sidebarOverlay"
-    ></div>
-
-
-    <!-- =========================================
-         CHAT
-    ========================================== -->
-
-    <main class="chat">
-
-
-        <!-- HEADER -->
-
-        <header
-            class="chat-header glass"
-        >
-
-            <button
-                class="header-button"
-                id="openSidebar"
-                type="button"
-                aria-label="Открыть пользователей"
-            >
-                ☰
-            </button>
-
-
-            <div
-                class="header-avatar"
-                id="headerAvatar"
-            >
-                ?
-            </div>
-
-
-            <div class="header-info">
-
-                <div
-                    class="header-name"
-                    id="headerName"
-                >
-                    Личные сообщения
-                </div>
-
-
-                <div
-                    class="header-status"
-                    id="status"
-                >
-                    Выберите пользователя
-                </div>
-
-            </div>
-
-
-            <button
-                class="header-button"
-                id="headerSearchButton"
-                type="button"
-                aria-label="Поиск"
-            >
-                ⌕
-            </button>
-
-        </header>
-
-
-        <!-- EMPTY -->
-
-        <section
-            class="empty-screen"
-            id="emptyScreen"
-        >
-
-            <div class="empty-icon">
-                ✈
-            </div>
-
-
-            <div class="empty-title">
-                Личные сообщения
-            </div>
-
-
-            <div class="empty-text">
-                Найдите пользователя по
-                имени или @username,
-                чтобы начать переписку.
-            </div>
-
-
-            <button
-                class="find-button"
-                id="findButton"
-                type="button"
-            >
-                Найти пользователя
-            </button>
-
-        </section>
-
-
-        <!-- MESSAGES -->
-
-        <section
-            class="messages hidden"
-            id="messages"
-        ></section>
-
-
-        <!-- EMOJI -->
-
-        <div
-            class="emoji-panel glass"
-            id="emojiPanel"
-        >
-
-            <button type="button">😀</button>
-            <button type="button">😂</button>
-            <button type="button">🤣</button>
-            <button type="button">😊</button>
-            <button type="button">😍</button>
-            <button type="button">😎</button>
-            <button type="button">👍</button>
-            <button type="button">❤️</button>
-            <button type="button">🔥</button>
-            <button type="button">🎉</button>
-            <button type="button">🤔</button>
-            <button type="button">😭</button>
-            <button type="button">💀</button>
-            <button type="button">😡</button>
-            <button type="button">🚀</button>
-            <button type="button">✨</button>
-            <button type="button">🥶</button>
-            <button type="button">😴</button>
-            <button type="button">😳</button>
-            <button type="button">🤯</button>
-            <button type="button">👏</button>
-            <button type="button">💯</button>
-            <button type="button">✅</button>
-            <button type="button">❤️‍🔥</button>
-
-        </div>
-
-
-        <!-- COMPOSER -->
-
-        <form
-            class="composer glass hidden"
-            id="messageForm"
-        >
-
-            <button
-                class="composer-button"
-                id="emojiButton"
-                type="button"
-                aria-label="Эмодзи"
-            >
-                ☺
-            </button>
-
-
-            <input
-                id="messageInput"
-                type="text"
-                maxlength="4000"
-                placeholder="Сообщение"
-                autocomplete="off"
-                enterkeyhint="send"
-            >
-
-
-            <button
-                class="composer-button attachment-button"
-                type="button"
-                aria-label="Вложение"
-            >
-                📎
-            </button>
-
-
-            <button
-                class="send-button"
-                type="submit"
-                aria-label="Отправить"
-            >
-                ↑
-            </button>
-
-        </form>
-
-    </main>
-
-
-    <!-- =========================================
-         SETTINGS
-    ========================================== -->
-
-    <div
-        class="modal-backdrop hidden"
-        id="settingsBackdrop"
-    >
-
-        <section
-            class="settings-modal glass"
-        >
-
-            <div class="settings-header">
-
-                <div>
-
-                    <div class="settings-title">
-                        Настройки
-                    </div>
-
-                    <div class="settings-subtitle">
-                        Профиль и внешний вид
-                    </div>
-
-                </div>
-
-
-                <button
-                    class="round-button"
-                    id="closeSettings"
-                    type="button"
-                >
-                    ×
-                </button>
-
-            </div>
-
-
-            <!-- PROFILE -->
-
-            <div class="settings-profile">
-
-                <div class="avatar-editor">
-
-                    <div
-                        class="big-avatar"
-                        id="settingsAvatar"
-                    >
-                        ?
-                    </div>
-
-
-                    <label class="avatar-change">
-
-                        Изменить фото
-
-                        <input
-                            type="file"
-                            id="avatarInput"
-                            accept="image/*"
-                            hidden
-                        >
-
-                    </label>
-
-                </div>
-
-
-                <div class="settings-profile-info">
-
-                    <div
-                        class="settings-profile-name"
-                        id="settingsProfileName"
-                    >
-                        Пользователь
-                    </div>
-
-
-                    <div
-                        class="settings-profile-username"
-                        id="settingsProfileUsername"
-                    >
-                        @username
-                    </div>
-
-
-                    <div
-                        class="settings-verified hidden"
-                        id="settingsVerified"
-                    >
-                        ✓ Подтверждённый профиль
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- NAME -->
-
-            <div class="settings-section">
-
-                <div class="settings-label">
-                    Имя
-                </div>
-
-
-                <input
-                    class="settings-input"
-                    id="displayNameInput"
-                    type="text"
-                    maxlength="40"
-                    placeholder="Твоё имя"
-                >
-
-
-                <div class="settings-label">
-                    Username
-                </div>
-
-
-                <div class="username-input-wrapper">
-
-                    <span>@</span>
-
-                    <input
-                        class="settings-input username-input"
-                        id="usernameInput"
-                        type="text"
-                        maxlength="24"
-                        placeholder="username"
-                        autocapitalize="none"
-                        autocomplete="off"
-                    >
-
-                </div>
-
-
-                <div class="settings-hint">
-                    2–24 символа: буквы, цифры, _, - и .
-                </div>
-
-            </div>
-
-
-            <!-- THEME -->
-
-            <div class="settings-section">
-
-                <div class="settings-label">
-                    Тема
-                </div>
-
-
-                <div class="theme-buttons">
-
-                    <button
-                        class="theme-button"
-                        id="lightThemeButton"
-                        type="button"
-                    >
-                        ☀ Светлая
-                    </button>
-
-
-                    <button
-                        class="theme-button"
-                        id="darkThemeButton"
-                        type="button"
-                    >
-                        ◐ Тёмная
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <!-- GLASS -->
-
-            <div class="settings-section">
-
-                <div class="setting-row">
-
-                    <div>
-
-                        <div class="setting-title">
-                            Стеклянный интерфейс
-                        </div>
-
-                        <div class="setting-description">
-                            Прозрачность и размытие
-                        </div>
-
-                    </div>
-
-
-                    <label class="switch">
-
-                        <input
-                            type="checkbox"
-                            id="glassToggle"
-                        >
-
-                        <span
-                            class="switch-slider"
-                        ></span>
-
-                    </label>
-
-                </div>
-
-            </div>
-
-
-            <!-- SAVE -->
-
-            <button
-                class="save-profile-button"
-                id="saveProfileButton"
-                type="button"
-            >
-                Сохранить изменения
-            </button>
-
-
-            <div
-                class="settings-error"
-                id="settingsError"
-            ></div>
-
-        </section>
-
+<div id="toast" class="toast hidden"></div>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card glass">
+    <div class="auth-logo">✈</div>
+    <div class="auth-title">My Chat</div>
+    <div class="auth-subtitle" id="authSubtitle">Твой личный мессенджер</div>
+
+    <div class="auth-tabs">
+      <button id="loginTab" class="auth-tab active" type="button">Войти</button>
+      <button id="registerTab" class="auth-tab" type="button">Регистрация</button>
     </div>
 
+    <form id="authForm">
+      <div id="authNameWrap" class="form-wrap hidden">
+        <label>Имя</label>
+        <input id="authName" maxlength="40" placeholder="Например: Арт" autocomplete="name">
+      </div>
 
-    <!-- =========================================
-         LOGIN
-    ========================================== -->
+      <div class="form-wrap">
+        <label>Username</label>
+        <div class="input-with-prefix"><span>@</span><input id="authUsername" maxlength="24" placeholder="Z1pperJ" autocapitalize="none" autocomplete="username"></div>
+      </div>
 
-    <div
-        class="login-overlay hidden"
-        id="loginOverlay"
-    >
+      <div id="authEmailWrap" class="form-wrap hidden">
+        <label>Email</label>
+        <input id="authEmail" type="email" maxlength="120" placeholder="you@example.com" autocomplete="email">
+      </div>
 
-        <div class="login-card glass">
+      <div id="claimWrap" class="form-wrap hidden">
+        <label>Код владельца @Z1pperJ</label>
+        <input id="claimCode" type="password" maxlength="120" placeholder="Введите код владельца" autocomplete="one-time-code">
+      </div>
 
-            <div class="login-logo">
-                ✈
-            </div>
+      <div class="form-wrap">
+        <label>Пароль</label>
+        <input id="authPassword" type="password" minlength="8" placeholder="Минимум 8 символов" autocomplete="current-password">
+      </div>
 
-
-            <div class="login-title">
-                Добро пожаловать
-            </div>
-
-
-            <div class="login-subtitle">
-                Создай профиль, чтобы
-                пользоваться My Chat.
-            </div>
-
-
-            <label class="login-label">
-                Имя
-            </label>
-
-
-            <input
-                class="login-input"
-                id="loginDisplayName"
-                type="text"
-                maxlength="40"
-                placeholder="Например: Арт"
-                autocomplete="name"
-            >
-
-
-            <label class="login-label">
-                Username
-            </label>
-
-
-            <div class="login-username">
-
-                <span>@</span>
-
-                <input
-                    class="login-input"
-                    id="loginUsername"
-                    type="text"
-                    maxlength="24"
-                    placeholder="Z1pperJ"
-                    autocapitalize="none"
-                    autocomplete="off"
-                >
-
-            </div>
-
-
-            <div
-                class="login-error"
-                id="loginError"
-            ></div>
-
-
-            <button
-                class="login-button"
-                id="loginButton"
-                type="button"
-            >
-                Войти
-            </button>
-
-        </div>
-
-    </div>
-
-
+      <div id="authError" class="form-error"></div>
+      <button id="authSubmit" class="primary-button" type="submit">Войти</button>
+      <button id="forgotButton" class="link-button" type="button">Забыли пароль?</button>
+    </form>
+  </div>
 </div>
 
-<script src="app.js"></script>
+<div id="app" class="app hidden">
+  <aside id="sidebar" class="sidebar glass">
+    <div class="sidebar-top">
+      <div class="profile-card">
+        <button id="myProfileButton" class="profile-avatar avatar-click" type="button"></button>
+        <div class="profile-main">
+          <div class="profile-name-line"><span id="myDisplayName"></span><span id="myVerified" class="verified-badge hidden">✓</span></div>
+          <div id="myUsername" class="profile-username"></div>
+          <div id="myBio" class="profile-bio"></div>
+        </div>
+        <button id="settingsButton" class="round-button" type="button" aria-label="Настройки">⚙</button>
+      </div>
 
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input id="searchInput" type="search" placeholder="Найти по нику или имени" autocomplete="off">
+      </div>
+
+      <div class="sidebar-tabs">
+        <button id="chatsTab" class="sidebar-tab active" type="button">Чаты</button>
+        <button id="peopleTab" class="sidebar-tab" type="button">Люди</button>
+      </div>
+    </div>
+
+    <div id="sidebarTitle" class="section-title">Последние чаты</div>
+    <div id="chatList" class="list"></div>
+  </aside>
+
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+  <main class="chat">
+    <header class="chat-header glass">
+      <button id="openSidebar" class="header-button mobile-only" type="button">☰</button>
+      <button id="mobileBack" class="header-button mobile-only hidden" type="button">‹</button>
+      <button id="chatHeaderAvatar" class="header-avatar avatar-click" type="button"></button>
+      <div class="header-info">
+        <div class="header-name-line"><div id="chatHeaderName" class="header-name">Личные сообщения</div><span id="chatHeaderVerified" class="verified-badge hidden">✓</span></div>
+        <div id="chatHeaderStatus" class="header-status">Выберите пользователя</div>
+      </div>
+      <div class="header-actions">
+        <button id="searchMessagesButton" class="header-button" type="button" aria-label="Поиск сообщений">⌕</button>
+        <button id="chatMenuButton" class="header-button" type="button" aria-label="Меню">⋮</button>
+      </div>
+    </header>
+
+    <section id="emptyScreen" class="empty-screen">
+      <div class="empty-icon">✈</div>
+      <div class="empty-title">Личные сообщения</div>
+      <div class="empty-text">Найди человека по @username или имени и начни переписку.</div>
+      <button id="findButton" class="primary-button small" type="button">Найти пользователя</button>
+    </section>
+
+    <section id="messages" class="messages hidden"></section>
+
+    <div id="replyBar" class="reply-bar hidden">
+      <div><strong>Ответ</strong><div id="replyText"></div></div>
+      <button id="cancelReply" type="button">×</button>
+    </div>
+
+    <div id="uploadProgress" class="upload-progress hidden"><div id="uploadProgressBar"></div></div>
+
+    <form id="composer" class="composer glass hidden">
+      <button id="emojiButton" class="composer-button" type="button">☺</button>
+      <input id="messageInput" type="text" maxlength="4000" placeholder="Сообщение" autocomplete="off">
+      <label class="composer-button file-button" title="Файл"><span>📎</span><input id="fileInput" type="file" hidden></label>
+      <label class="composer-button camera-button" title="Камера"><span>⌁</span><input id="cameraInput" type="file" accept="image/*,video/*" capture="environment" hidden></label>
+      <button id="sendButton" class="send-button" type="submit">↑</button>
+    </form>
+
+    <div id="emojiPanel" class="emoji-panel glass">
+      <button type="button">😀</button><button type="button">😂</button><button type="button">🤣</button><button type="button">😊</button><button type="button">😍</button><button type="button">😎</button><button type="button">👍</button><button type="button">❤️</button>
+      <button type="button">🔥</button><button type="button">🎉</button><button type="button">🤔</button><button type="button">😭</button><button type="button">💀</button><button type="button">😡</button><button type="button">🚀</button><button type="button">✨</button>
+      <button type="button">🥶</button><button type="button">😴</button><button type="button">😳</button><button type="button">🤯</button><button type="button">👏</button><button type="button">💯</button><button type="button">✅</button><button type="button">❤️‍🔥</button>
+    </div>
+  </main>
+</div>
+
+<div id="settingsBackdrop" class="modal-backdrop hidden">
+  <section class="settings-modal glass">
+    <div class="modal-header"><div><div class="modal-title">Настройки</div><div class="modal-subtitle">Профиль, приватность и оформление</div></div><button id="closeSettings" class="round-button" type="button">×</button></div>
+
+    <div class="settings-profile">
+      <button id="settingsAvatar" class="big-avatar" type="button"></button>
+      <label class="avatar-change">Изменить фото<input id="avatarInput" type="file" accept="image/*" hidden></label>
+      <button id="removeAvatarButton" class="danger-link" type="button">Удалить фото</button>
+      <div id="avatarColors" class="avatar-colors"><button data-avatar-color="#3390ec" type="button"></button><button data-avatar-color="#8b5cf6" type="button"></button><button data-avatar-color="#ef5da8" type="button"></button><button data-avatar-color="#f59e0b" type="button"></button><button data-avatar-color="#22c55e" type="button"></button><button data-avatar-color="#14b8a6" type="button"></button></div>
+    </div>
+
+    <div class="settings-section">
+      <label class="settings-label">Имя</label>
+      <input id="settingsDisplayName" class="settings-input" maxlength="40">
+      <label class="settings-label">Username</label>
+      <div class="input-with-prefix settings-prefix"><span>@</span><input id="settingsUsername" class="settings-input" maxlength="24" autocapitalize="none"></div>
+      <label class="settings-label">Bio</label>
+      <textarea id="settingsBio" class="settings-input textarea" maxlength="160" placeholder="Расскажи о себе"></textarea>
+      <div id="settingsClaimWrap" class="settings-claim hidden"><label class="settings-label">Код владельца @Z1pperJ</label><input id="settingsClaimCode" class="settings-input" type="password" autocomplete="one-time-code" placeholder="Код владельца"></div>
+      <label class="settings-label">Статус</label>
+      <select id="settingsPresence" class="settings-input"><option value="online">На связи</option><option value="away">Отошёл</option><option value="dnd">Не беспокоить</option></select>
+      <label class="settings-label">Кто видит меня онлайн</label>
+      <select id="settingsPrivacy" class="settings-input"><option value="everyone">Все</option><option value="nobody">Никто</option></select>
+      <div id="settingsVerifiedText" class="settings-verified hidden">✓ Подтверждённый профиль</div><div id="settingsJoined" class="settings-joined"></div>
+      <div id="settingsError" class="form-error"></div>
+      <button id="saveProfileButton" class="primary-button" type="button">Сохранить профиль</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">Тема</div>
+      <div class="theme-buttons"><button id="lightThemeButton" class="theme-button" type="button">☀ Светлая</button><button id="darkThemeButton" class="theme-button" type="button">◐ Тёмная</button></div>
+      <div class="setting-row"><div><strong>Стеклянный интерфейс</strong><small>Blur и прозрачные панели</small></div><label class="switch"><input id="glassToggle" type="checkbox"><span></span></label></div>
+      <div class="settings-label">Фон чата</div>
+      <div class="wallpaper-buttons"><button data-wallpaper="blue" type="button">Облака</button><button data-wallpaper="purple" type="button">Фиолетовый</button><button data-wallpaper="sunset" type="button">Закат</button><button data-wallpaper="plain" type="button">Обычный</button></div>
+      <div class="settings-label">Размер текста</div>
+      <div class="theme-buttons"><button data-font="14" class="font-button" type="button">Маленький</button><button data-font="16" class="font-button" type="button">Обычный</button><button data-font="18" class="font-button" type="button">Большой</button></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="setting-row"><div><strong>Звук сообщений</strong><small>Звуковой сигнал</small></div><label class="switch"><input id="soundToggle" type="checkbox"><span></span></label></div>
+      <div class="setting-row"><div><strong>Уведомления</strong><small>Push и системные уведомления</small></div><button id="enableNotifications" class="mini-button" type="button">Включить</button></div>
+      <div class="setting-row"><div><strong>Приложение</strong><small>Установить My Chat на устройство</small></div><button id="installButton" class="mini-button" type="button">Установить</button></div>
+    </div>
+
+    <div class="settings-section"><button id="logoutButton" class="danger-button" type="button">Выйти из аккаунта</button></div>
+  </section>
+</div>
+
+<div id="contextMenu" class="context-menu glass hidden">
+  <div id="reactionRow" class="reaction-row"><button data-react="❤️" type="button">❤️</button><button data-react="😂" type="button">😂</button><button data-react="👍" type="button">👍</button><button data-react="🔥" type="button">🔥</button><button data-react="😮" type="button">😮</button></div>
+  <button data-action="reply" type="button">↩ Ответить</button>
+  <button data-action="copy" type="button">▣ Копировать</button>
+  <button data-action="edit" type="button">✎ Изменить</button>
+  <button data-action="forward" type="button">➜ Переслать</button>
+  <button data-action="delete" type="button">⌫ Удалить</button>
+</div>
+
+<div id="chatMenu" class="context-menu glass hidden">
+  <button id="pinChatButton" type="button">☆ Закрепить</button>
+  <button id="muteChatButton" type="button">🔕 Тихий режим</button>
+  <button id="blockUserButton" type="button">⛔ Заблокировать</button>
+  <button id="reportUserButton" type="button">⚑ Пожаловаться</button>
+</div>
+
+<script src="/app.js"></script>
 </body>
-
 </html>
