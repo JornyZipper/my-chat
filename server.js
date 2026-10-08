@@ -1123,6 +1123,33 @@ app.post("/api/push/subscribe", authMiddleware, async (req, res) => {
 });
 
 /* ================================
+   WEBRTC CONFIG
+================================ */
+
+app.get("/api/rtc-config", authMiddleware, (req, res) => {
+    const iceServers = [
+        { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
+    ];
+
+    const turnUrls = String(process.env.RTC_TURN_URLS || "")
+        .split(",")
+        .map(v => v.trim())
+        .filter(Boolean);
+
+    if (turnUrls.length && process.env.RTC_TURN_USERNAME && process.env.RTC_TURN_CREDENTIAL) {
+        iceServers.push({
+            urls: turnUrls,
+            username: process.env.RTC_TURN_USERNAME,
+            credential: process.env.RTC_TURN_CREDENTIAL
+        });
+    }
+
+    res.json({
+        iceServers
+    });
+});
+
+/* ================================
    STATUS
 ================================ */
 
@@ -1173,6 +1200,86 @@ wss.on("connection", ws => {
 
             if (!ws.authed) return;
             const userId = ws.userId;
+
+            /* ================================
+               CALL SIGNALING (WebRTC)
+            ================================ */
+            if (data.type === "call_offer") {
+                const targetId = String(data.toUserId || "");
+                const callId = clean(data.callId, 120);
+                if (!targetId || !callId || !data.offer) return;
+                if (targetId === userId) return;
+                const blocked = await blockedBetween(userId, targetId);
+                if (blocked.a_blocks_b || blocked.b_blocks_a) {
+                    send(ws, {type: "call_error", callId, error: "Нельзя позвонить этому пользователю."});
+                    return;
+                }
+                const target = await getUser(targetId);
+                if (!target || !isOnline(targetId)) {
+                    send(ws, {type: "call_unavailable", callId, toUserId: targetId, error: "Пользователь сейчас не в сети."});
+                    return;
+                }
+                sendToUser(targetId, {
+                    type: "call_offer",
+                    callId,
+                    fromUserId: userId,
+                    from: publicProfile(await getUser(userId), userId),
+                    video: Boolean(data.video),
+                    offer: data.offer
+                });
+                return;
+            }
+
+            if (data.type === "call_answer") {
+                const targetId = String(data.toUserId || "");
+                const callId = clean(data.callId, 120);
+                if (!targetId || !callId || !data.answer) return;
+                sendToUser(targetId, {
+                    type: "call_answer",
+                    callId,
+                    fromUserId: userId,
+                    answer: data.answer
+                });
+                return;
+            }
+
+            if (data.type === "call_ice") {
+                const targetId = String(data.toUserId || "");
+                const callId = clean(data.callId, 120);
+                if (!targetId || !callId || !data.candidate) return;
+                sendToUser(targetId, {
+                    type: "call_ice",
+                    callId,
+                    fromUserId: userId,
+                    candidate: data.candidate
+                });
+                return;
+            }
+
+            if (data.type === "call_reject" || data.type === "call_end") {
+                const targetId = String(data.toUserId || "");
+                const callId = clean(data.callId, 120);
+                if (!targetId || !callId) return;
+                sendToUser(targetId, {
+                    type: data.type,
+                    callId,
+                    fromUserId: userId,
+                    reason: clean(data.reason, 120)
+                });
+                return;
+            }
+
+            if (data.type === "call_busy") {
+                const targetId = String(data.toUserId || "");
+                const callId = clean(data.callId, 120);
+                if (!targetId || !callId) return;
+                sendToUser(targetId, {
+                    type: "call_busy",
+                    callId,
+                    fromUserId: userId
+                });
+                return;
+            }
 
             if (data.type === "typing") {
                 const targetId = String(data.toUserId || "");

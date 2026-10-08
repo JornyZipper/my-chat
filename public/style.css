@@ -175,3 +175,429 @@ body.dark textarea,
 body.dark select {
     color-scheme: dark;
 }
+
+/* =====================================================
+   WEBRTC CALLS
+===================================================== */
+
+.call-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(12, 22, 32, 0.34);
+    -webkit-backdrop-filter: blur(18px) saturate(145%);
+    backdrop-filter: blur(18px) saturate(145%);
+}
+
+.incoming-call-card,
+.active-call-card {
+    width: min(520px, 100%);
+    border-radius: 28px;
+    padding: 26px;
+}
+
+.incoming-call-card {
+    text-align: center;
+}
+
+.call-avatar {
+    width: 86px;
+    height: 86px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 30px;
+    font-weight: 800;
+    background: linear-gradient(145deg, #63bcff, #247adc);
+    box-shadow: 0 12px 30px rgba(36,122,220,.25);
+    transition: transform .35s ease, box-shadow .35s ease;
+}
+
+.call-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.call-avatar.large {
+    width: 120px;
+    height: 120px;
+    font-size: 42px;
+}
+
+.call-avatar.ringing {
+    animation: callRing 1.2s ease-in-out infinite;
+}
+
+.call-avatar.ring-pulse {
+    box-shadow: 0 0 0 12px rgba(51,144,236,.10), 0 12px 30px rgba(36,122,220,.25);
+}
+
+@keyframes callRing {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    20% { transform: scale(1.04) rotate(-2deg); }
+    40% { transform: scale(1.04) rotate(2deg); }
+    60% { transform: scale(1.02) rotate(-1deg); }
+    80% { transform: scale(1.02) rotate(1deg); }
+}
+
+.call-name {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.call-subtitle,
+.call-timer {
+    margin-top: 5px;
+    color: var(--secondary);
+    font-size: 14px;
+}
+
+.incoming-call-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.call-reject,
+.call-accept {
+    min-height: 46px;
+    border-radius: 15px;
+    font-weight: 750;
+    cursor: pointer;
+    border: 1px solid var(--border);
+}
+
+.call-reject {
+    background: rgba(226,79,82,.12);
+    color: #df5356;
+}
+
+.call-accept {
+    background: linear-gradient(145deg, #49a8ff, #237edc);
+    color: #fff;
+    box-shadow: 0 7px 17px rgba(35,127,220,.25);
+}
+
+.active-call-card {
+    position: relative;
+    min-height: min(760px, 88vh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.call-remote-area {
+    position: relative;
+    flex: 1;
+    min-height: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 22px;
+    background: rgba(8,15,22,.24);
+}
+
+.remote-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 22px;
+    background: #0d1218;
+}
+
+.remote-voice-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+}
+
+.local-video {
+    position: absolute;
+    right: 28px;
+    top: 28px;
+    width: 130px;
+    height: 178px;
+    object-fit: cover;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,.35);
+    box-shadow: 0 10px 26px rgba(0,0,0,.25);
+    background: #10151b;
+    z-index: 3;
+}
+
+.call-error {
+    margin-top: 10px;
+    padding: 9px 11px;
+    border-radius: 12px;
+    background: rgba(226,79,82,.10);
+    color: #df5356;
+    text-align: center;
+    font-size: 12px;
+}
+
+.call-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 18px;
+}
+
+.call-control {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.52);
+    color: var(--text);
+    font-size: 22px;
+    cursor: pointer;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+}
+
+.call-control:active {
+    transform: scale(.93);
+}
+
+.call-control.hangup {
+    background: #ef5350;
+    color: #fff;
+    transform: rotate(135deg);
+    box-shadow: 0 8px 20px rgba(239,83,80,.28);
+}
+
+.call-button {
+    color: var(--blue);
+}
+
+.call-button:active {
+    transform: scale(.92);
+}
+
+/* =====================================================
+   DARK CALLS
+===================================================== */
+
+body.dark .call-overlay {
+    background: rgba(0,0,0,.58);
+}
+
+body.dark .call-control {
+    background: rgba(255,255,255,.08);
+    color: #f4f6f8;
+}
+
+body.dark .call-remote-area {
+    background: rgba(0,0,0,.28);
+}
+
+body.dark .call-reject {
+    background: rgba(226,79,82,.14);
+    color: #ff8b8d;
+}
+
+/* =====================================================
+   ANDROID / TOUCH DEVICES
+===================================================== */
+
+@media (pointer: coarse) {
+    .header-button,
+    .round-button,
+    .composer-button,
+    .send-button {
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .user-item,
+    .list-item {
+        min-height: 66px;
+    }
+
+    .context-menu > button,
+    .emoji-panel button {
+        min-height: 42px;
+    }
+}
+
+body.android .composer input {
+    font-size: 16px;
+}
+
+body.android .app,
+body.android .chat {
+    height: 100dvh;
+}
+
+/* =====================================================
+   MOBILE CALLS
+===================================================== */
+
+@media (max-width: 700px) {
+    .call-overlay {
+        align-items: stretch;
+        padding: 0;
+    }
+
+    .active-call-card {
+        width: 100%;
+        height: 100%;
+        min-height: 100dvh;
+        border-radius: 0;
+        padding: 10px 10px max(12px, env(safe-area-inset-bottom));
+        padding-top: max(10px, env(safe-area-inset-top));
+    }
+
+    .call-remote-area {
+        min-height: 0;
+        border-radius: 24px;
+    }
+
+    .local-video {
+        right: 20px;
+        top: 20px;
+        width: 108px;
+        height: 148px;
+        border-radius: 16px;
+    }
+
+    .call-controls {
+        padding-top: 12px;
+    }
+
+    .call-control {
+        width: 52px;
+        height: 52px;
+    }
+
+    .incoming-call-card {
+        align-self: flex-end;
+        width: 100%;
+        border-radius: 28px 28px 0 0;
+        padding: 24px 18px max(22px, calc(22px + env(safe-area-inset-bottom)));
+    }
+
+    #searchMessagesButton {
+        display: none;
+    }
+
+    .header-actions .call-button {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    #chatMenuButton {
+        width: 36px;
+        height: 36px;
+    }
+
+    body.android .chat-header,
+    body.android .composer {
+        -webkit-backdrop-filter: blur(26px) saturate(170%);
+        backdrop-filter: blur(26px) saturate(170%);
+    }
+
+    body.dark.android .chat-header,
+    body.dark.android .composer {
+        background: rgba(18,24,30,.62);
+        border-color: rgba(255,255,255,.10);
+    }
+
+    body.dark.android .sidebar {
+        background: rgba(18,24,30,.90);
+    }
+
+    body.ios.dark .call-control,
+    body.android.dark .call-control {
+        background: rgba(255,255,255,.08);
+    }
+}
+
+/* =====================================================
+   HARD DARK FALLBACKS FOR BROWSER CONTROLS
+===================================================== */
+
+body.dark {
+    color-scheme: dark;
+}
+
+body.dark .auth-card,
+body.dark .settings-modal,
+body.dark .context-menu,
+body.dark .emoji-panel,
+body.dark .reply-bar,
+body.dark .chat-menu {
+    color: var(--text);
+}
+
+body.dark .auth-title,
+body.dark .modal-title,
+body.dark .settings-profile-name,
+body.dark .profile-main,
+body.dark .list-name-line strong,
+body.dark .list-item,
+body.dark .empty-title,
+body.dark .call-name,
+body.dark .settings-section strong,
+body.dark .composer input,
+body.dark .settings-input,
+body.dark .login-input {
+    color: #f4f6f8;
+}
+
+body.dark .settings-profile,
+body.dark .auth-tabs,
+body.dark .sidebar-tabs,
+body.dark .chat-header,
+body.dark .composer,
+body.dark .search-box {
+    background-color: rgba(25,31,38,.78);
+}
+
+body.dark .settings-input,
+body.dark .login-input,
+body.dark .composer input,
+body.dark .search-box,
+body.dark .input-with-prefix {
+    border-color: rgba(255,255,255,.10);
+}
+
+body.dark .settings-input::placeholder,
+body.dark .login-input::placeholder,
+body.dark .composer input::placeholder,
+body.dark .search-box input::placeholder {
+    color: #87919b;
+}
+
+body.dark .theme-button,
+body.dark .wallpaper-buttons button,
+body.dark .font-button,
+body.dark .mini-button {
+    background: rgba(255,255,255,.07);
+    color: #f4f6f8;
+}
+
+body.dark .theme-button.active,
+body.dark .font-button.active,
+body.dark .wallpaper-buttons button.active {
+    background: rgba(51,144,236,.20);
+    color: #72baff;
+}

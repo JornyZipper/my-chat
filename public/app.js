@@ -28,6 +28,14 @@ let pendingInstallPrompt = null;
 let pressTimer = null;
 let touchStart = null;
 
+// Public bridge used by calls.js. It does not expose secrets; it only
+// provides access to the current chat state and the existing WebSocket sender.
+window.myChatGetCurrentUser = () => currentUser;
+window.myChatGetProfile = () => profile;
+window.myChatSocketSend = data => socketSend(data);
+window.myChatToast = message => toast(message);
+window.myChatHaptic = ms => haptic(ms);
+
 function toast(message) {
   ui.toast.textContent = message;
   ui.toast.classList.remove("hidden");
@@ -204,6 +212,7 @@ function connectSocket() {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(`${protocol}//${location.host}/ws`);
   socket = ws;
+  window.myChatSocket = ws;
 
   ws.addEventListener("open", () => {
     ws.send(JSON.stringify({ type: "auth", token }));
@@ -212,6 +221,11 @@ function connectSocket() {
   ws.addEventListener("message", e => {
     let data;
     try { data = JSON.parse(e.data); } catch { return; }
+
+    if (data.type && data.type.startsWith("call_")) {
+      window.dispatchEvent(new CustomEvent("mychat:call-signal", {detail: data}));
+      return;
+    }
 
     if (data.type === "auth_ok") {
       profile = data.profile;
@@ -242,6 +256,7 @@ function connectSocket() {
   ws.addEventListener("close", () => {
     // Старый сокет не должен запускать ещё один reconnect поверх нового.
     if (socket !== ws) return;
+    window.myChatSocket = null;
     ui.chatHeaderStatus.textContent = "переподключение…";
     reconnectTimer = setTimeout(connectSocket, 1200);
   });
