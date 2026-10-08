@@ -1,13 +1,20 @@
 {
   "name": "my-chat",
-  "version": "3.0.0",
-  "description": "Private realtime messenger",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Full realtime messenger for Render",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.10.0",
+    "pg": "^8.13.1",
+    "web-push": "^3.6.7",
     "ws": "^8.18.0"
   },
   "engines": {
