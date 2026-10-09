@@ -1,0 +1,41 @@
+/* The avatar in a chat header should have the same circular sizing as the user list. */
+.chat-header .header-avatar,
+.chat-header .chat-avatar,
+.chat-header .avatar,
+.chat-header #chatAvatar,
+.chat-header #chat-avatar,
+#chatHeaderAvatar,
+#chatAvatar {
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  border-radius: 50% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+.chat-header .header-avatar img,
+.chat-header .chat-avatar img,
+.chat-header .avatar img,
+.chat-header #chatAvatar img,
+.chat-header #chat-avatar img,
+#chatHeaderAvatar img,
+#chatAvatar img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: 50% !important;
+}
+.register-confirm-wrapper { display:flex; flex-direction:column; gap:7px; margin-top:12px; }
+.register-confirm-wrapper input { min-height:42px; }
