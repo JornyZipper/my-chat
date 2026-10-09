@@ -1,246 +1,212 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
-<meta name="theme-color" content="#edf4fb">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="BurmalpticajopaChat">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="/style.css">
-<title>BurmalpticajopaChat</title>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src https: wss: http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self';">
+  <meta name="theme-color" content="#17212b">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>BurmalpticajopaChat</title>
+  <link rel="stylesheet" href="./styles.css?v=20261009a">
 </head>
 <body>
-<div id="toast" class="toast hidden"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<div id="authScreen" class="auth-screen">
-  <div class="auth-card glass">
-    <div class="auth-logo">✈</div>
-    <div class="auth-title">BurmalpticajopaChat</div>
-    <div class="auth-subtitle" id="authSubtitle">Твой личный мессенджер</div>
-
-    <div class="auth-tabs">
-      <button id="loginTab" class="auth-tab active" type="button">Войти</button>
-      <button id="registerTab" class="auth-tab" type="button">Регистрация</button>
+  <main id="auth-screen" class="auth-screen">
+    <div class="auth-art" aria-hidden="true">
+      <div class="auth-art-top"><div class="brand-mark brand-mark-large">B<span>•</span></div><span class="art-kicker">PRIVATE MESSAGING</span></div>
+      <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+      <div class="art-chat-card art-chat-card-main"><span class="art-avatar art-avatar-blue">M</span><div class="art-chat-lines"><i></i><i></i></div><span class="art-message-dot"></span></div>
+      <div class="art-chat-card art-chat-card-small"><span class="art-avatar art-avatar-violet">A</span><div class="art-chat-lines"><i></i><i></i></div></div>
+      <div class="art-bubble art-bubble-one">Привет! 👋</div><div class="art-bubble art-bubble-two">На связи</div>
+      <div class="auth-art-copy"><h2>Разговоры<br>без лишнего шума.</h2><p>Твои сообщения, звонки и люди — в одном аккуратном пространстве.</p></div>
+      <div class="art-footer"><span class="art-footer-dot"></span> ТВОЁ ПРОСТРАНСТВО ДЛЯ ОБЩЕНИЯ</div>
     </div>
 
-    <form id="authForm">
-      <div id="authNameWrap" class="form-wrap hidden">
-        <label>Имя</label>
-        <input id="authName" maxlength="40" placeholder="Например: Арт" autocomplete="name">
-      </div>
+    <section class="auth-panel-wrap">
+      <div class="auth-card">
+        <div class="auth-mobile-brand"><div class="brand-mark">B<span>•</span></div><span>BurmalpticajopaChat</span></div>
+        <p class="eyebrow">WELCOME BACK</p>
+        <h1>Рады тебя видеть</h1>
+        <p class="auth-description">Войди в аккаунт, чтобы продолжить общение.</p>
 
-      <div class="form-wrap">
-        <label>Username</label>
-        <div class="input-with-prefix"><span>@</span><input id="authUsername" maxlength="24" placeholder="Z1pperJ" autocapitalize="none" autocomplete="username"></div>
-      </div>
-
-      <div id="authEmailWrap" class="form-wrap hidden">
-        <label>Email</label>
-        <input id="authEmail" type="email" maxlength="120" placeholder="you@example.com" autocomplete="email">
-      </div>
-
-      <div id="claimWrap" class="form-wrap hidden">
-        <label>Код владельца @Z1pperJ</label>
-        <input id="claimCode" type="password" maxlength="120" placeholder="Введите код владельца" autocomplete="one-time-code">
-      </div>
-
-      <div class="form-wrap">
-        <label>Пароль</label>
-        <input id="authPassword" type="password" minlength="8" placeholder="Минимум 8 символов" autocomplete="current-password">
-      </div>
-
-      <div id="authError" class="form-error"></div>
-      <button id="authSubmit" class="primary-button" type="submit">Войти</button>
-      <button id="forgotButton" class="link-button" type="button">Забыли пароль?</button>
-    </form>
-  </div>
-</div>
-
-<div id="app" class="app hidden">
-  <aside id="sidebar" class="sidebar glass">
-    <div class="sidebar-top">
-      <div class="profile-card">
-        <button id="myProfileButton" class="profile-avatar avatar-click" type="button"></button>
-        <div class="profile-main">
-          <div class="profile-name-line"><span id="myDisplayName"></span><span id="myVerified" class="verified-badge hidden">✓</span></div>
-          <div id="myUsername" class="profile-username"></div>
-          <div id="myBio" class="profile-bio"></div>
+        <div class="server-connect-block">
+          <div class="server-label-row"><label class="field-label" for="server-url">Сервер мессенджера</label><button id="check-server" class="server-check" type="button" title="Проверить подключение"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg> Проверить</button></div>
+          <div class="server-field"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><input id="server-url" type="url" placeholder="https://my-chat-ucw4.onrender.com" autocomplete="url" spellcheck="false"></div>
+          <div id="server-status" class="hint"><span class="status-pip"></span> По умолчанию используется https://my-chat-ucw4.onrender.com.</div>
         </div>
-        <button id="settingsButton" class="round-button" type="button" aria-label="Настройки">⚙</button>
+
+        <div class="auth-tabs" role="tablist" aria-label="Тип авторизации">
+          <button class="auth-tab active" data-auth-tab="login" role="tab" aria-selected="true" type="button">Вход</button>
+          <button class="auth-tab" data-auth-tab="register" role="tab" aria-selected="false" type="button">Регистрация</button>
+        </div>
+
+        <form id="login-form" class="auth-form">
+          <label class="field-label" for="login-username">Имя пользователя</label>
+          <div class="input-shell"><span class="input-prefix">@</span><input id="login-username" name="username" autocomplete="username" required maxlength="24" placeholder="username"></div>
+          <label class="field-label" for="login-password">Пароль</label>
+          <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Твой пароль"></div>
+          <button class="primary-button full-width" type="submit">Войти <span class="button-arrow">→</span></button>
+        </form>
+
+        <form id="register-form" class="auth-form hidden">
+          <label class="field-label" for="register-username">Придумайте username</label>
+          <div class="input-shell"><span class="input-prefix">@</span><input id="register-username" name="username" autocomplete="username" required minlength="2" maxlength="24" placeholder="username"></div>
+          <label class="field-label" for="register-displayname">Отображаемое имя</label>
+          <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><input id="register-displayname" name="displayName" required maxlength="40" placeholder="Как тебя называть"></div>
+          <label class="field-label" for="register-email">Электронная почта</label>
+          <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><input id="register-email" name="email" type="email" autocomplete="email" required placeholder="name@example.com"></div>
+          <label class="field-label" for="register-password">Придумайте пароль</label>
+          <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required placeholder="Не менее 8 символов"></div>
+          <label class="field-label" for="register-confirm">Повторите пароль</label>
+          <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><input id="register-confirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" required placeholder="Повторите пароль"></div>
+          <label class="field-label" for="register-claim">Код владельца <span class="label-optional">если требуется</span></label>
+          <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 8-8 2 2-2 2 2 2-3 3-2-2-2 2"/></svg></span><input id="register-claim" name="claimCode" type="password" autocomplete="off" placeholder="Можно оставить пустым"></div>
+          <button class="primary-button full-width" type="submit">Создать аккаунт <span class="button-arrow">→</span></button>
+        </form>
+        <p class="auth-footnote"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg> Соединение с сервером защищено. Никогда не передавай пароль другим людям.</p>
+      </div>
+      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> DESKTOP</div>
+    </section>
+  </main>
+
+  <main id="app-screen" class="app-shell hidden">
+    <aside class="nav-rail" aria-label="Навигация">
+      <div class="rail-brand"><div class="brand-mark rail-mark">B<span>•</span></div></div>
+      <div class="rail-divider"></div>
+      <div class="rail-active-marker"></div>
+      <div class="rail-button active" title="Чаты" aria-label="Чаты" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-5.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 10h8M8 13h5"/></svg></div>
+      <div class="rail-spacer"></div>
+      <button id="admin-button" class="rail-button hidden" type="button" title="Админ-панель" aria-label="Админ-панель"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></button>
+      <button id="profile-button" class="rail-button" type="button" title="Мой профиль" aria-label="Мой профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button>
+      <button id="settings-button" class="rail-button" type="button" title="Настройки сервера" aria-label="Настройки сервера"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></button>
+      <button id="logout-button" class="rail-button rail-logout" type="button" title="Выйти из аккаунта" aria-label="Выйти из аккаунта"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 16l4-4-4-4M18 12H9"/></svg></button>
+      <div class="rail-bottom"><div id="socket-indicator" class="connection-dot offline" title="Нет соединения"></div></div>
+    </aside>
+
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <div class="sidebar-heading"><p class="eyebrow">MESSAGES</p><h1>Сообщения</h1></div>
+        <div class="mobile-top-actions"><button id="mobile-profile-button" class="icon-button header-tool" type="button" title="Мой профиль" aria-label="Мой профиль">☻</button><button id="mobile-admin-button" class="icon-button header-tool hidden" type="button" title="Админ-панель" aria-label="Админ-панель">♢</button><button id="mobile-settings-button" class="icon-button header-tool" type="button" title="Настройки" aria-label="Настройки">⚙</button></div>
+        <button id="refresh-chats" class="icon-button header-tool" type="button" title="Обновить чаты" aria-label="Обновить чаты"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg></button>
+      </header>
+      <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg><input id="search-users" type="search" placeholder="Поиск людей и чатов" autocomplete="off"><kbd>Ctrl K</kbd></div>
+      <div class="directory-tabs" role="tablist" aria-label="Списки чатов и пользователей"><button id="tab-chats" class="directory-tab active" type="button" aria-selected="true">Чаты</button><button id="tab-people" class="directory-tab" type="button" aria-selected="false">Люди</button></div>
+      <div class="list-heading"><span id="list-heading-label">Недавние чаты</span><span class="list-heading-line"></span></div>
+      <div id="chat-list" class="chat-list"></div>
+      <div id="search-results" class="search-results hidden"></div>
+      <footer class="sidebar-footer"><div id="my-avatar" class="avatar self-avatar">B</div><div class="me-details"><strong id="my-name">Пользователь</strong><span id="my-verified" class="verified hidden" title="Подтверждённый профиль" aria-label="Подтверждённый профиль">✓</span><span id="my-username">@username</span></div><span class="footer-presence"></span><span id="footer-status" class="footer-status">Подключение…</span></footer>
+    </aside>
+
+    <section class="conversation-area">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-halo"><div class="empty-symbol"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M50.5 27.5a20 20 0 0 1-20 20H18L8 54V38.5a20 20 0 1 1 42.5-11Z"/><path d="m20 30 8 6 16-14"/></svg></div></div>
+        <span class="empty-eyebrow">ТВОИ ЛЮДИ. ТВОИ РАЗГОВОРЫ.</span>
+        <h2>Всё начинается с сообщения</h2>
+        <p>Выбери переписку слева или найди человека по имени пользователя.</p>
+        <div class="empty-shortcut"><span class="shortcut-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg></span> Открыть поиск <kbd>Ctrl K</kbd></div>
       </div>
 
-      <div class="search-box">
-        <span class="search-icon">⌕</span>
-        <input id="searchInput" type="search" placeholder="Найти по нику или имени" autocomplete="off">
-      </div>
-
-      <div class="sidebar-tabs">
-        <button id="chatsTab" class="sidebar-tab active" type="button">Чаты</button>
-        <button id="peopleTab" class="sidebar-tab" type="button">Люди</button>
-      </div>
-    </div>
-
-    <div id="sidebarTitle" class="section-title">Последние чаты</div>
-    <div id="chatList" class="list"></div>
-  </aside>
-
-  <div id="sidebarOverlay" class="sidebar-overlay"></div>
-
-  <main class="chat">
-    <header class="chat-header glass">
-      <button id="openSidebar" class="header-button mobile-only" type="button">☰</button>
-      <button id="mobileBack" class="header-button mobile-only hidden" type="button">‹</button>
-      <button id="chatHeaderAvatar" class="header-avatar avatar-click" type="button"></button>
-      <div class="header-info">
-        <div class="header-name-line"><div id="chatHeaderName" class="header-name">Личные сообщения</div><span id="chatHeaderVerified" class="verified-badge hidden">✓</span></div>
-        <div id="chatHeaderStatus" class="header-status">Выберите пользователя</div>
-      </div>
-      <div class="header-actions">
-        <button id="voiceCallButton" class="header-button call-button" type="button" aria-label="Голосовой звонок" title="Позвонить">📞</button>
-        <button id="videoCallButton" class="header-button call-button" type="button" aria-label="Видеозвонок" title="Видеозвонок">🎥</button>
-        <button id="searchMessagesButton" class="header-button" type="button" aria-label="Поиск сообщений">⌕</button>
-        <button id="voiceCallButton" class="header-button call-button" type="button" aria-label="Голосовой звонок" title="Голосовой звонок">📞</button><button id="videoCallButton" class="header-button call-button" type="button" aria-label="Видеозвонок" title="Видеозвонок">🎥</button><button id="chatMenuButton" class="header-button" type="button" aria-label="Меню">⋮</button>
-      </div>
-    </header>
-
-    <section id="emptyScreen" class="empty-screen">
-      <div class="empty-icon">✈</div>
-      <div class="empty-title">Личные сообщения</div>
-      <div class="empty-text">Найди человека по @username или имени и начни переписку.</div>
-      <button id="findButton" class="primary-button small" type="button">Найти пользователя</button>
+      <section id="chat-view" class="chat-view hidden">
+        <header class="chat-header">
+          <button id="mobile-chat-back" type="button" class="icon-button mobile-back" aria-label="Назад к чатам">‹</button>
+          <div id="chat-avatar" class="avatar chat-header-avatar">U</div>
+          <div class="chat-person"><div class="person-name-line"><strong id="chat-name">Пользователь</strong><span id="chat-verified" class="verified hidden" title="Подтверждённый профиль">✓</span></div><span id="chat-status" class="chat-status">Загрузка…</span></div>
+          <div class="chat-actions">
+            <button id="voiceCallButton" class="icon-button call-button" type="button" title="Голосовой звонок" aria-label="Голосовой звонок"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 3.5 10 7.3 8.3 9.5a14 14 0 0 0 6.2 6.2l2.2-1.7 3.8 2.7-.7 3c-.2.8-.9 1.3-1.7 1.3C10.1 21 3 13.9 3 5.9c0-.8.5-1.5 1.3-1.7z"/></svg></button>
+            <button id="videoCallButton" class="icon-button call-button" type="button" title="Видеозвонок" aria-label="Видеозвонок"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg></button>
+            <span class="header-action-separator"></span>
+            <button id="reload-messages" class="icon-button header-tool" type="button" title="Обновить сообщения" aria-label="Обновить сообщения"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg></button>
+          </div>
+        </header>
+        <div class="chat-wallpaper" aria-hidden="true"></div>
+        <div id="message-list" class="message-list"><div class="loading-label">Загрузка сообщений…</div></div>
+        <form id="composer-form" class="composer">
+          <div id="attachment-pending" class="attachment-pending hidden"><span id="attachment-pending-icon" class="pending-file-icon">＋</span><span id="attachment-pending-name" class="pending-file-name"></span><button id="attachment-remove" type="button" class="pending-file-remove" aria-label="Убрать файл">×</button></div>
+          <div class="composer-inner">
+            <button id="attach-button" class="attach-button" type="button" disabled aria-label="Прикрепить файл" title="Фото, видео или файл"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 11.1 12 20.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
+            <input id="attachment-input" class="visually-hidden-input" type="file" accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.zip" />
+            <textarea id="message-input" rows="1" maxlength="4000" placeholder="Сообщение…" disabled aria-label="Текст сообщения"></textarea>
+            <button id="send-button" class="send-button" type="submit" disabled aria-label="Отправить сообщение" title="Отправить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.7 18-3.8-7.5L3 9.7z"/></svg></button>
+          </div>
+          <div class="composer-note">Enter — отправить <span>·</span> Shift + Enter — новая строка</div>
+        </form>
+      </section>
     </section>
 
-    <section id="messages" class="messages hidden"></section>
-
-    <div id="replyBar" class="reply-bar hidden">
-      <div><strong>Ответ</strong><div id="replyText"></div></div>
-      <button id="cancelReply" type="button">×</button>
-    </div>
-
-    <div id="uploadProgress" class="upload-progress hidden"><div id="uploadProgressBar"></div></div>
-
-    <form id="composer" class="composer glass hidden">
-      <button id="emojiButton" class="composer-button" type="button">☺</button>
-      <input id="messageInput" type="text" maxlength="4000" placeholder="Сообщение" autocomplete="off">
-      <label class="composer-button file-button" title="Файл"><span>📎</span><input id="fileInput" type="file" hidden></label>
-      <label class="composer-button camera-button" title="Камера"><span>⌁</span><input id="cameraInput" type="file" accept="image/*,video/*" capture="environment" hidden></label>
-      <button id="sendButton" class="send-button" type="submit">↑</button>
-    </form>
-
-    <div id="emojiPanel" class="emoji-panel glass">
-      <button type="button">😀</button><button type="button">😂</button><button type="button">🤣</button><button type="button">😊</button><button type="button">😍</button><button type="button">😎</button><button type="button">👍</button><button type="button">❤️</button>
-      <button type="button">🔥</button><button type="button">🎉</button><button type="button">🤔</button><button type="button">😭</button><button type="button">💀</button><button type="button">😡</button><button type="button">🚀</button><button type="button">✨</button>
-      <button type="button">🥶</button><button type="button">😴</button><button type="button">😳</button><button type="button">🤯</button><button type="button">👏</button><button type="button">💯</button><button type="button">✅</button><button type="button">❤️‍🔥</button>
-    </div>
-  </main>
-</div>
-
-<!-- =================================================
-     CALL UI
-================================================= -->
-
-<div id="callOverlay" class="call-overlay hidden">
-  <div id="incomingCallCard" class="incoming-call-card glass hidden">
-    <div id="incomingCallAvatar" class="call-avatar"></div>
-    <div id="incomingCallName" class="call-name">Входящий звонок</div>
-    <div id="incomingCallType" class="call-subtitle">Голосовой звонок</div>
-    <div class="incoming-call-actions">
-      <button id="rejectCallButton" class="call-reject" type="button">Отклонить</button>
-      <button id="acceptCallButton" class="call-accept" type="button">Ответить</button>
-    </div>
-  </div>
-
-  <div id="activeCallCard" class="active-call-card glass hidden">
-    <div id="callRemoteArea" class="call-remote-area">
-      <video id="remoteVideo" class="remote-video hidden" autoplay playsinline></video>
-      <div id="remoteVoiceFallback" class="remote-voice-fallback">
-        <div id="callRemoteAvatar" class="call-avatar large"></div>
-        <div id="callRemoteName" class="call-name">Звонок</div>
-        <div id="callTimer" class="call-timer">00:00</div>
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal-card">
+        <button id="close-settings" class="modal-close" type="button" aria-label="Закрыть">×</button>
+        <div class="modal-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></div>
+        <p class="eyebrow">CONNECTION</p><h2 id="settings-title">Настройки сервера</h2>
+        <p class="modal-description">Укажи адрес веб-сервиса, на котором работает BurmalpticajopaChat.</p>
+        <label class="field-label" for="settings-server-url">URL веб-сервиса Render</label>
+        <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><input id="settings-server-url" type="url" placeholder="https://my-chat-ucw4.onrender.com" spellcheck="false"></div>
+        <p class="hint">Не вставляй сюда DATABASE_URL, пароли или токены.</p>
+        <div class="modal-actions"><button id="cancel-settings" class="secondary-button" type="button">Отмена</button><button id="save-settings" class="primary-button" type="button">Сохранить и подключить</button></div>
       </div>
     </div>
 
-    <video id="localVideo" class="local-video hidden" autoplay muted playsinline></video>
-    <audio id="remoteAudio" autoplay></audio>
-
-    <div id="callError" class="call-error hidden"></div>
-
-    <div class="call-controls">
-      <button id="muteCallButton" class="call-control" type="button" aria-label="Микрофон">🎙</button>
-      <button id="cameraCallButton" class="call-control hidden" type="button" aria-label="Камера">📷</button>
-      <button id="hangupCallButton" class="call-control hangup" type="button" aria-label="Завершить звонок">☎</button>
+    <div id="profile-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+      <div class="modal-card profile-modal-card">
+        <button id="close-profile" class="modal-close" type="button" aria-label="Закрыть">×</button>
+        <p class="eyebrow">MY ACCOUNT</p><h2 id="profile-title">Мой профиль</h2>
+        <p class="modal-description">Настрой имя, описание, видимость и фотографию профиля.</p>
+        <div class="profile-avatar-editor"><div id="profile-avatar-preview" class="avatar profile-avatar-preview">B</div><div class="profile-avatar-actions"><strong>Фото профиля</strong><span>PNG, JPG или WEBP · до 4 МБ</span><div class="profile-avatar-buttons"><button id="choose-avatar" class="secondary-button" type="button">Выбрать фото</button><button id="remove-avatar" class="text-button" type="button">Удалить</button></div></div></div>
+        <input id="profile-avatar-input" class="visually-hidden-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+        <form id="profile-form" class="profile-form">
+          <label class="field-label" for="profile-display-name">Отображаемое имя</label><input id="profile-display-name" class="plain-field" maxlength="40" required />
+          <label class="field-label" for="profile-username">Имя пользователя</label><div class="profile-username-field"><span>@</span><input id="profile-username" class="plain-field" maxlength="24" required /></div>
+          <label class="field-label" for="profile-bio">О себе</label><textarea id="profile-bio" class="plain-field bio-field" maxlength="160" rows="3" placeholder="Несколько слов о себе"></textarea>
+          <div class="profile-fields-grid"><div><label class="field-label" for="profile-presence">Статус</label><select id="profile-presence" class="plain-field"><option value="online">В сети</option><option value="away">Нет на месте</option><option value="dnd">Не беспокоить</option></select></div><div><label class="field-label" for="profile-privacy">Кто видит онлайн</label><select id="profile-privacy" class="plain-field"><option value="everyone">Все</option><option value="nobody">Никто</option></select></div></div>
+          <label class="field-label" for="profile-avatar-color">Цвет аватара без фотографии</label><input id="profile-avatar-color" class="profile-color-field" type="color" value="#3390ec" />
+          <div class="modal-actions"><button id="cancel-profile" class="secondary-button" type="button">Отмена</button><button id="save-profile" class="primary-button" type="submit">Сохранить изменения</button></div>
+        </form>
+      </div>
     </div>
+
+    <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+      <div class="modal-card admin-modal-card">
+        <button id="close-admin" class="modal-close" type="button" aria-label="Закрыть">×</button>
+        <p class="eyebrow">OWNER SETTINGS</p><h2 id="admin-title">Админ-панель</h2>
+        <p id="admin-status" class="modal-description">Проверяем права аккаунта…</p>
+        <div id="admin-claim" class="hidden">
+          <p class="admin-info">Для первой активации введи свой <code>VERIFIED_CLAIM_CODE</code>, который хранится в Render. Это требуется только один раз. Не публикуй его.</p>
+          <label class="field-label" for="admin-claim-code">Код владельца</label>
+          <input id="admin-claim-code" type="password" class="plain-field" autocomplete="off" placeholder="Секретный код из Render" />
+          <button id="admin-claim-submit" class="primary-button admin-submit" type="button">Активировать права</button>
+        </div>
+        <div id="admin-manager" class="hidden">
+          <label class="field-label" for="admin-search">Поиск пользователей</label>
+          <div class="admin-search-line"><input id="admin-search" type="search" class="plain-field" placeholder="username или имя"/><button id="admin-search-go" class="secondary-button" type="button">Найти</button></div>
+          <div id="admin-results" class="admin-results" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="media-viewer" class="media-viewer hidden" role="dialog" aria-modal="true" aria-label="Просмотр файла">
+      <button id="media-viewer-close" class="media-viewer-close" type="button" aria-label="Закрыть просмотр">×</button>
+      <div id="media-viewer-stage" class="media-viewer-stage"><img id="media-viewer-image" class="hidden" alt="Изображение из переписки"/><video id="media-viewer-video" class="hidden" controls playsinline></video></div>
+      <div id="media-viewer-caption" class="media-viewer-caption"></div>
+    </div>
+  </main>
+
+  <div id="callOverlay" class="call-overlay hidden" role="dialog" aria-modal="true" aria-label="Звонок">
+    <section id="incomingCallCard" class="incoming-call-card hidden">
+      <div class="call-incoming-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 3.5 10 7.3 8.3 9.5a14 14 0 0 0 6.2 6.2l2.2-1.7 3.8 2.7-.7 3c-.2.8-.9 1.3-1.7 1.3C10.1 21 3 13.9 3 5.9c0-.8.5-1.5 1.3-1.7z"/></svg></div>
+      <div id="incomingCallAvatar" class="call-avatar">?</div>
+      <div id="incomingCallName" class="call-name">Входящий звонок</div>
+      <div id="incomingCallType" class="call-subtitle">Голосовой звонок</div>
+      <div class="incoming-call-actions"><button id="rejectCallButton" class="call-reject" type="button"><span>✕</span> Отклонить</button><button id="acceptCallButton" class="call-accept" type="button"><span>☎</span> Ответить</button></div>
+    </section>
+    <section id="activeCallCard" class="active-call-card hidden">
+      <div class="call-window-header"><div class="call-live-indicator"></div><span>BurmalpticajopaChat · звонок</span></div>
+      <div id="callRemoteArea" class="call-remote-area"><video id="remoteVideo" class="remote-video hidden" autoplay playsinline></video><div id="remoteVoiceFallback" class="remote-voice-fallback"><div class="call-wave call-wave-one"></div><div class="call-wave call-wave-two"></div><div id="callRemoteAvatar" class="call-avatar large">?</div><div id="callRemoteName" class="call-name">Звонок</div><div id="callTimer" class="call-timer">Подключение…</div></div></div>
+      <video id="localVideo" class="local-video hidden" autoplay muted playsinline></video><audio id="remoteAudio" autoplay playsinline></audio><div id="callError" class="call-error hidden"></div>
+      <div class="call-controls"><button id="muteCallButton" class="call-control" type="button" aria-label="Микрофон" aria-pressed="false">🎙</button><button id="cameraCallButton" class="call-control hidden" type="button" aria-label="Камера" aria-pressed="false">📷</button><button id="hangupCallButton" class="call-control hangup" type="button" aria-label="Завершить звонок">☎</button></div>
+    </section>
   </div>
-</div>
-
-<div id="settingsBackdrop" class="modal-backdrop hidden">
-  <section class="settings-modal glass">
-    <div class="modal-header"><div><div class="modal-title">Настройки</div><div class="modal-subtitle">Профиль, приватность и оформление</div></div><button id="closeSettings" class="round-button" type="button">×</button></div>
-
-    <div class="settings-profile">
-      <button id="settingsAvatar" class="big-avatar" type="button"></button>
-      <label class="avatar-change">Изменить фото<input id="avatarInput" type="file" accept="image/*" hidden></label>
-      <button id="removeAvatarButton" class="danger-link" type="button">Удалить фото</button>
-      <div id="avatarColors" class="avatar-colors"><button data-avatar-color="#3390ec" type="button"></button><button data-avatar-color="#8b5cf6" type="button"></button><button data-avatar-color="#ef5da8" type="button"></button><button data-avatar-color="#f59e0b" type="button"></button><button data-avatar-color="#22c55e" type="button"></button><button data-avatar-color="#14b8a6" type="button"></button></div>
-    </div>
-
-    <div class="settings-section">
-      <label class="settings-label">Имя</label>
-      <input id="settingsDisplayName" class="settings-input" maxlength="40">
-      <label class="settings-label">Username</label>
-      <div class="input-with-prefix settings-prefix"><span>@</span><input id="settingsUsername" class="settings-input" maxlength="24" autocapitalize="none"></div>
-      <label class="settings-label">Bio</label>
-      <textarea id="settingsBio" class="settings-input textarea" maxlength="160" placeholder="Расскажи о себе"></textarea>
-      <div id="settingsClaimWrap" class="settings-claim hidden"><label class="settings-label">Код владельца @Z1pperJ</label><input id="settingsClaimCode" class="settings-input" type="password" autocomplete="one-time-code" placeholder="Код владельца"></div>
-      <label class="settings-label">Статус</label>
-      <select id="settingsPresence" class="settings-input"><option value="online">На связи</option><option value="away">Отошёл</option><option value="dnd">Не беспокоить</option></select>
-      <label class="settings-label">Кто видит меня онлайн</label>
-      <select id="settingsPrivacy" class="settings-input"><option value="everyone">Все</option><option value="nobody">Никто</option></select>
-      <div id="settingsVerifiedText" class="settings-verified hidden">✓ Подтверждённый профиль</div><div id="settingsJoined" class="settings-joined"></div>
-      <div id="settingsError" class="form-error"></div>
-      <button id="saveProfileButton" class="primary-button" type="button">Сохранить профиль</button>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-label">Тема</div>
-      <div class="theme-buttons"><button id="lightThemeButton" class="theme-button" type="button">☀ Светлая</button><button id="darkThemeButton" class="theme-button" type="button">◐ Тёмная</button></div>
-      <div class="setting-row"><div><strong>Стеклянный интерфейс</strong><small>Blur и прозрачные панели</small></div><label class="switch"><input id="glassToggle" type="checkbox"><span></span></label></div>
-      <div class="settings-label">Фон чата</div>
-      <div class="wallpaper-buttons"><button data-wallpaper="blue" type="button">Облака</button><button data-wallpaper="purple" type="button">Фиолетовый</button><button data-wallpaper="sunset" type="button">Закат</button><button data-wallpaper="plain" type="button">Обычный</button></div>
-      <div class="settings-label">Размер текста</div>
-      <div class="theme-buttons"><button data-font="14" class="font-button" type="button">Маленький</button><button data-font="16" class="font-button" type="button">Обычный</button><button data-font="18" class="font-button" type="button">Большой</button></div>
-    </div>
-
-    <div class="settings-section">
-      <div class="setting-row"><div><strong>Звук сообщений</strong><small>Звуковой сигнал</small></div><label class="switch"><input id="soundToggle" type="checkbox"><span></span></label></div>
-      <div class="setting-row"><div><strong>Уведомления</strong><small>Push и системные уведомления</small></div><button id="enableNotifications" class="mini-button" type="button">Включить</button></div>
-      <div class="setting-row"><div><strong>Приложение</strong><small>Установить BurmalpticajopaChat на устройство</small></div><button id="installButton" class="mini-button" type="button">Установить</button></div>
-    </div>
-
-    <div class="settings-section"><button id="logoutButton" class="danger-button" type="button">Выйти из аккаунта</button></div>
-  </section>
-</div>
-
-<div id="contextMenu" class="context-menu glass hidden">
-  <div id="reactionRow" class="reaction-row"><button data-react="❤️" type="button">❤️</button><button data-react="😂" type="button">😂</button><button data-react="👍" type="button">👍</button><button data-react="🔥" type="button">🔥</button><button data-react="😮" type="button">😮</button></div>
-  <button data-action="reply" type="button">↩ Ответить</button>
-  <button data-action="copy" type="button">▣ Копировать</button>
-  <button data-action="edit" type="button">✎ Изменить</button>
-  <button data-action="forward" type="button">➜ Переслать</button>
-  <button data-action="delete" type="button">⌫ Удалить</button>
-</div>
-
-<div id="chatMenu" class="context-menu glass hidden">
-  <button id="pinChatButton" type="button">☆ Закрепить</button>
-  <button id="muteChatButton" type="button">🔕 Тихий режим</button>
-  <button id="blockUserButton" type="button">⛔ Заблокировать</button>
-  <button id="reportUserButton" type="button">⚑ Пожаловаться</button>
-</div>
-
-<script src="/app.js"></script>
-<script src="/calls.js"></script>
+  <script src="./browser-bridge.js?v=20261009a"></script>
+  <script src="./renderer.js?v=20261009a"></script>
+  <script src="./calls.js?v=20261009a"></script>
 </body>
 </html>

@@ -33,10 +33,7 @@
     link.href = href;
     document.head.appendChild(link);
   }
-  if (!location.protocol.startsWith('file:')) {
-    addStylesheet('/telegram-polish.css');
-    addStylesheet('/calls-mobile.css');
-  }
+  // Shared styles are bundled in styles.css for both website and desktop.
 
   const ui = {
     overlay: $('callOverlay'), incoming: $('incomingCallCard'),
