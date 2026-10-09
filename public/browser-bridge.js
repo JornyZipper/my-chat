@@ -2,6 +2,7 @@
    It keeps the existing server API unchanged. */
 (() => {
   'use strict';
+  if (window.burmalDesktop) return; // Electron preload is already active.
   const ALLOWED_UPLOADS = { '/api/upload': { field: 'file', limit: 15 * 1024 * 1024 }, '/api/profile/avatar': { field: 'avatar', limit: 4 * 1024 * 1024 } };
   const safePath = (path) => {
     const value = String(path || '');

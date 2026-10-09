@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-client="loading">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src https: wss: http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self';">
   <meta name="theme-color" content="#17212b">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>BurmalpticajopaChat</title>
-  <link rel="stylesheet" href="./styles.css?v=20261009a">
+  <title>BurmalpticajopaChat · v2.1</title>
+  <link rel="stylesheet" href="./styles.css?v=20261009b">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -65,7 +65,7 @@
         </form>
         <p class="auth-footnote"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg> Соединение с сервером защищено. Никогда не передавай пароль другим людям.</p>
       </div>
-      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> DESKTOP</div>
+      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> v2.1</div>
     </section>
   </main>
 
@@ -85,7 +85,7 @@
 
     <aside class="sidebar">
       <header class="sidebar-header">
-        <div class="sidebar-heading"><p class="eyebrow">MESSAGES</p><h1>Сообщения</h1></div>
+        <div class="sidebar-heading"><p class="eyebrow">BURMALPTICAJOPACHAT · v2.1</p><h1>Сообщения</h1><div id="account-identity" class="account-identity" title="Аккаунт, под которым открыты чаты">Аккаунт: не выполнен вход</div></div>
         <div class="mobile-top-actions"><button id="mobile-profile-button" class="icon-button header-tool" type="button" title="Мой профиль" aria-label="Мой профиль">☻</button><button id="mobile-admin-button" class="icon-button header-tool hidden" type="button" title="Админ-панель" aria-label="Админ-панель">♢</button><button id="mobile-settings-button" class="icon-button header-tool" type="button" title="Настройки" aria-label="Настройки">⚙</button></div>
         <button id="refresh-chats" class="icon-button header-tool" type="button" title="Обновить чаты" aria-label="Обновить чаты"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg></button>
       </header>
@@ -94,7 +94,7 @@
       <div class="list-heading"><span id="list-heading-label">Недавние чаты</span><span class="list-heading-line"></span></div>
       <div id="chat-list" class="chat-list"></div>
       <div id="search-results" class="search-results hidden"></div>
-      <footer class="sidebar-footer"><div id="my-avatar" class="avatar self-avatar">B</div><div class="me-details"><strong id="my-name">Пользователь</strong><span id="my-verified" class="verified hidden" title="Подтверждённый профиль" aria-label="Подтверждённый профиль">✓</span><span id="my-username">@username</span></div><span class="footer-presence"></span><span id="footer-status" class="footer-status">Подключение…</span></footer>
+      <footer class="sidebar-footer"><div id="my-avatar" class="avatar self-avatar">B</div><div class="me-details"><strong id="my-name">Пользователь</strong><span id="my-verified" class="verified hidden" title="Подтверждённый профиль" aria-label="Подтверждённый профиль">✓</span><span id="my-username">@username</span></div><span class="footer-presence"></span><span id="footer-status" class="footer-status">Подключение…</span><button type="button" id="switch-account" class="switch-account" title="Войти в другой аккаунт">Сменить</button></footer>
     </aside>
 
     <section class="conversation-area">
@@ -205,8 +205,8 @@
       <div class="call-controls"><button id="muteCallButton" class="call-control" type="button" aria-label="Микрофон" aria-pressed="false">🎙</button><button id="cameraCallButton" class="call-control hidden" type="button" aria-label="Камера" aria-pressed="false">📷</button><button id="hangupCallButton" class="call-control hangup" type="button" aria-label="Завершить звонок">☎</button></div>
     </section>
   </div>
-  <script src="./browser-bridge.js?v=20261009a"></script>
-  <script src="./renderer.js?v=20261009a"></script>
-  <script src="./calls.js?v=20261009a"></script>
+  <script src="./browser-bridge.js?v=20261009b"></script>
+  <script src="./renderer.js?v=20261009b"></script>
+  <script src="./calls.js?v=20261009b"></script>
 </body>
 </html>

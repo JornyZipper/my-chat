@@ -25,16 +25,6 @@
     matches.slice(1).forEach((node) => node.remove());
   }
 
-  // Load the visual refinements without forcing edits to the existing index.html.
-  function addStylesheet(href) {
-    if ([...document.querySelectorAll('link[rel="stylesheet"]')].some((l) => l.href.endsWith(href))) return;
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = href;
-    document.head.appendChild(link);
-  }
-  // Shared styles are bundled in styles.css for both website and desktop.
-
   const ui = {
     overlay: $('callOverlay'), incoming: $('incomingCallCard'),
     incomingAvatar: $('incomingCallAvatar'), incomingName: $('incomingCallName'),
@@ -68,7 +58,7 @@
     try {
       if (window.myChatGetRtcConfig) {
         const data = await window.myChatGetRtcConfig();
-        if (Array.isArray(data?.iceServers) && data.iceServers.length) return data.iceServers;
+        if (Array.isArray(data?.iceServers) && data.iceServers.length) return [...data.iceServers, {urls:['stun:stun.cloudflare.com:3478']}];
       } else {
         const token = localStorage.getItem('mychat_token') || '';
         const response = await fetch('/api/rtc-config', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
@@ -81,7 +71,7 @@
       console.warn('RTC config could not be loaded; using STUN fallback.', error);
     }
     return [
-      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+      { urls: ['stun:stun.cloudflare.com:3478'] }
     ];
   }
   function setAvatar(element, user) {

@@ -2,8 +2,10 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
+  const IS_WEB = window.burmalDesktop?.platform === 'web';
+  document.documentElement.dataset.client = IS_WEB ? 'web' : 'desktop';
   const state = {
-    baseUrl: window.location.origin,
+    baseUrl: IS_WEB ? window.location.origin : (localStorage.getItem('burmal.baseUrl') || 'https://my-chat-ucw4.onrender.com'),
     token: localStorage.getItem('burmal.token') || '',
     profile: null,
     chats: [],
@@ -21,7 +23,8 @@
     isSending: false,
     pendingAttachment: null,
     pendingAvatarFile: null,
-    pendingAvatarObjectUrl: null
+    pendingAvatarObjectUrl: null,
+    avatarRevisionById: new Map()
   };
 
   const authScreen = $('auth-screen');
@@ -49,9 +52,9 @@
     if (Number.isNaN(date.getTime())) return '';
     const now = new Date();
     if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     }
-    return date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
   }
   function showToast(message, type = '') {
     const toast = $('toast');
@@ -73,7 +76,7 @@
     return url.origin;
   }
   async function api(path, method = 'GET', body = null) {
-    if (!state.baseUrl) throw new Error('Не удалось определить адрес сайта.');
+    if (!state.baseUrl) throw new Error('Не удалось определить адрес сервера Render. Проверь настройки подключения.');
     const result = await window.burmalDesktop.apiRequest({
       baseUrl: state.baseUrl,
       path,
@@ -126,7 +129,11 @@
     if (!element) return;
     element.replaceChildren();
     element.classList.add('avatar-ready');
-    const url = absoluteAssetUrl(user?.avatarUrl);
+    let url = absoluteAssetUrl(user?.avatarUrl);
+    const revision = state.avatarRevisionById.get(user?.id);
+    if (url && revision && url.startsWith('http')) {
+      const parsed = new URL(url); parsed.searchParams.set('avatar_v', String(revision)); url = parsed.href;
+    }
     element.style.background = user?.avatarColor || '';
     if (url) {
       const image = document.createElement('img');
@@ -283,7 +290,7 @@
     authScreen.classList.remove('hidden');
     appScreen.classList.add('hidden');
     appScreen.classList.remove('mobile-chat-open');
-    serverUrl.value = window.location.origin;
+    serverUrl.value = IS_WEB ? window.location.origin : state.baseUrl;
     setAuthTab('login');
   }
   function showApp() {
@@ -296,6 +303,7 @@
     paintAvatar($('my-avatar'), state.profile);
     $('my-name').textContent = state.profile.displayName || state.profile.username || 'Пользователь';
     $('my-username').textContent = `@${state.profile.username || ''}`;
+    $('account-identity').textContent = `Вы вошли как @${state.profile.username || '?'} · ID ${String(state.profile.id || '').slice(0, 8)}`;
     $('my-verified').classList.toggle('hidden', !state.profile.verified);
     const preview = $('profile-avatar-preview');
     if (preview) paintAvatar(preview, state.profile);
@@ -315,8 +323,8 @@
 
   async function checkServer() {
     try {
-      state.baseUrl = window.location.origin;
-      serverUrl.value = window.location.origin;
+      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(serverUrl.value);
+      serverUrl.value = state.baseUrl;
       localStorage.setItem('burmal.baseUrl', state.baseUrl);
       setServerStatus('Проверка сервера…');
       const result = await window.burmalDesktop.apiRequest({ baseUrl: state.baseUrl, path: '/api/status', method: 'GET' });
@@ -351,8 +359,8 @@
   $('login-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
-      state.baseUrl = window.location.origin;
-      serverUrl.value = window.location.origin;
+      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(serverUrl.value);
+      serverUrl.value = state.baseUrl;
       localStorage.setItem('burmal.baseUrl', state.baseUrl);
       const username = $('login-username').value.trim();
       const password = $('login-password').value;
@@ -372,8 +380,8 @@
   $('register-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
-      state.baseUrl = window.location.origin;
-      serverUrl.value = window.location.origin;
+      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(serverUrl.value);
+      serverUrl.value = state.baseUrl;
       localStorage.setItem('burmal.baseUrl', state.baseUrl);
       const form = $('register-form');
       const payload = {
@@ -689,7 +697,7 @@
     let lastDate = '';
     for (const message of state.messages) {
       const date = new Date(message.createdAt || Date.now());
-      const dateStr = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+      const dateStr = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
       if (dateStr && dateStr !== lastDate) {
         const dateRow = document.createElement('div'); dateRow.className = 'message-date'; dateRow.textContent = dateStr; messageList.append(dateRow); lastDate = dateStr;
       }
@@ -850,17 +858,18 @@
   });
   $('refresh-chats').addEventListener('click', () => loadChats().then(() => showToast('Список чатов обновлён.', 'success')).catch(error => showToast(error.message, 'error')));
   $('reload-messages').addEventListener('click', () => state.selectedUser && loadMessages(state.selectedUser, false).catch(error => showToast(error.message, 'error')));
+  $('switch-account').addEventListener('click', () => $('logout-button').click());
   $('logout-button').addEventListener('click', () => {
-    disconnectSocket(); $('admin-button').classList.add('hidden'); $('mobile-admin-button').classList.add('hidden'); state.token = ''; state.profile = null; state.chats = []; state.directory = []; state.usersById.clear(); state.selectedUser = null; state.messages = []; appScreen.classList.remove('mobile-chat-open');
+    disconnectSocket(); $('admin-button').classList.add('hidden'); $('mobile-admin-button').classList.add('hidden'); state.token = ''; state.profile = null; state.chats = []; state.directory = []; state.usersById.clear(); state.selectedUser = null; state.selectedConversationId = null; state.messages = []; state.avatarRevisionById.clear(); appScreen.classList.remove('mobile-chat-open');
     localStorage.removeItem('burmal.token'); setComposerEnabled(false); showAuth(); showToast('Ты вышел из аккаунта.');
   });
-  $('settings-button').addEventListener('click', () => { $('settings-server-url').value = window.location.origin; $('settings-server-url').readOnly = true; $('save-settings').disabled = true; $('settings-modal').classList.remove('hidden'); });
+  $('settings-button').addEventListener('click', () => { $('settings-server-url').value = state.baseUrl; $('settings-server-url').readOnly = IS_WEB; $('save-settings').disabled = IS_WEB; $('settings-modal').classList.remove('hidden'); });
   $('close-settings').addEventListener('click', () => $('settings-modal').classList.add('hidden'));
   $('cancel-settings').addEventListener('click', () => $('settings-modal').classList.add('hidden'));
   $('settings-modal').addEventListener('click', (event) => { if (event.target === $('settings-modal')) $('settings-modal').classList.add('hidden'); });
   $('save-settings').addEventListener('click', async () => {
     try {
-      const nextBase = normalizedBaseUrl($('settings-server-url').value);
+      const nextBase = IS_WEB ? window.location.origin : normalizedBaseUrl($('settings-server-url').value);
       if (nextBase !== state.baseUrl) {
         state.baseUrl = nextBase; localStorage.setItem('burmal.baseUrl', nextBase);
         disconnectSocket(); state.selectedUser = null; state.selectedConversationId = null; state.chats = []; state.messages = [];
@@ -924,6 +933,7 @@
       $('profile-avatar-input').value = '';
       const result = await api('/api/profile/avatar', 'DELETE');
       state.profile = result.profile || { ...state.profile, avatarUrl: '' };
+      state.avatarRevisionById.set(state.profile.id, Date.now());
       updateSelfProfile();
       renderChatList();
       showToast('Фото профиля удалено.', 'success');
@@ -941,6 +951,7 @@
       if (state.pendingAvatarFile) {
         const uploadedAvatar = await uploadFile('/api/profile/avatar', 'avatar', state.pendingAvatarFile);
         if (uploadedAvatar.profile) state.profile = uploadedAvatar.profile;
+        if (state.profile?.id) state.avatarRevisionById.set(state.profile.id, Date.now());
       }
       const payload = {
         username: $('profile-username').value.trim().replace(/^@/, ''),
@@ -1074,10 +1085,10 @@
   });
 
   async function restoreSession() {
-    serverUrl.value = window.location.origin;
-    if (!state.token) { showAuth(); return; }
+    serverUrl.value = state.baseUrl;
+    if (!state.baseUrl || !state.token) { showAuth(); return; }
     try {
-      state.baseUrl = window.location.origin;
+      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(state.baseUrl);
       const data = await api('/api/profile');
       state.profile = data.profile;
       if (!state.profile) throw new Error('Профиль не найден.');
