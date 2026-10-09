@@ -1,11 +1,11 @@
 {
-  "name": "My Chat",
-  "short_name": "My Chat",
+  "name": "Burmalchat",
+  "short_name": "Burmalchat",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#edf4fb",
   "theme_color": "#edf4fb",
-  "description": "Private realtime messenger",
+  "description": "Burmalchat — личный мессенджер",
   "icons": [
     {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
   ]

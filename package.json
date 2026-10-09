@@ -1,8 +1,8 @@
 {
-  "name": "my-chat",
+  "name": "burmalchat",
   "version": "4.1.0",
   "private": true,
-  "description": "Full realtime messenger for Render",
+  "description": "Burmalchat realtime messenger for Render",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
