@@ -1,0 +1,57 @@
+/* Telegram-inspired color and layout polish for BurmalpticajopaChat. */
+:root {
+  --blue: #3390ec;
+  --blue2: #2481d7;
+  --green: #31a24c;
+  --secondary: #70808f;
+  --bg1: #dce8f1;
+  --bg2: #cfdeea;
+  --glass: rgba(255,255,255,.88);
+  --glass2: rgba(255,255,255,.96);
+  --input: rgba(255,255,255,.82);
+  --incoming: #ffffff;
+  --outgoing: #e1ffc9;
+  --border: rgba(17,45,70,.08);
+  --shadow: 0 3px 16px rgba(25,55,80,.08);
+}
+body.dark {
+  --blue: #3390ec;
+  --blue2: #2a83d4;
+  --secondary: #91a0af;
+  --bg1: #0e1621;
+  --bg2: #0e1621;
+  --glass: rgba(23,33,43,.94);
+  --glass2: rgba(23,33,43,.98);
+  --input: #242f3d;
+  --incoming: #182533;
+  --outgoing: #2b5278;
+  --border: rgba(255,255,255,.07);
+  --shadow: 0 6px 24px rgba(0,0,0,.22);
+}
+body { background: var(--bg1); }
+.sidebar { background: var(--glass2); border-right: 1px solid var(--border); }
+.sidebar-top { padding: 10px 12px; }
+.profile-card { padding: 4px 3px 10px; }
+.profile-avatar,.list-avatar,.header-avatar,.big-avatar { border-radius: 50%; }
+.search-box { border-radius: 9px; background: var(--input); border: 0; min-height: 40px; }
+.sidebar-tabs { margin-top: 10px; border-bottom: 1px solid var(--border); }
+.sidebar-tab { border-radius: 0; }
+.sidebar-tab.active { box-shadow: inset 0 -2px var(--blue); background: transparent; }
+.list-item,.user-item { border-radius: 10px; margin: 1px 5px; }
+.list-item.active,.user-item.active { background: rgba(51,144,236,.15); }
+body.dark .list-item.active, body.dark .user-item.active { background: #2b5278; }
+.chat-header { background: var(--glass2); border-bottom: 1px solid var(--border); }
+.header-name { font-weight: 650; }
+.header-status { font-size: 12px; }
+.header-button.call-button { border-radius: 50%; min-width: 40px; min-height: 40px; color: var(--blue); touch-action: manipulation; }
+.header-button.call-button:active { transform: scale(.94); }
+body.dark .chat-header { background: #17212b; }
+body.dark .sidebar { background: #17212b; }
+body.dark .composer { background: #17212b; border-color: rgba(255,255,255,.06); }
+body.dark .message.incoming { background: #182533; border-radius: 12px 12px 12px 4px; }
+body.dark .message.outgoing { background: #2b5278; border-radius: 12px 12px 4px 12px; }
+.message.incoming { border-radius: 12px 12px 12px 4px; box-shadow: 0 1px 1px rgba(0,0,0,.05); }
+.message.outgoing { border-radius: 12px 12px 4px 12px; box-shadow: 0 1px 1px rgba(0,0,0,.05); }
+.composer { border-radius: 22px; box-shadow: none; }
+.send-button { border-radius: 50%; background: var(--blue); }
+.empty-screen { background: transparent; }

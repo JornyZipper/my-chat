@@ -1,0 +1,28 @@
+/* Mobile call reliability and touch sizing. */
+.header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; min-width: max-content; }
+.header-actions .call-button { flex: 0 0 40px; min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.call-overlay { z-index: 10000; overscroll-behavior: contain; }
+.call-overlay video { max-width: 100%; }
+.call-control,.call-accept,.call-reject { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+#remoteAudio { position: absolute; width: 1px; height: 1px; opacity: .01; pointer-events: none; }
+.enable-call-audio { display: block; width: 100%; min-height: 44px; margin: 0 auto 8px; border: 0; border-radius: 12px; background: #3390ec; color: white; font-weight: 650; }
+@media (max-width: 700px) {
+  .chat-header { min-width: 0; gap: 7px; padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+  .header-info { min-width: 0; flex: 1 1 auto; }
+  .header-name { max-width: 28vw; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .header-actions { gap: 0; }
+  .header-actions .call-button { flex-basis: 36px; min-width: 36px; min-height: 40px; width: 36px; padding: 0; font-size: 16px; }
+  #chatMenuButton { flex: 0 0 36px; min-width: 36px; }
+  .call-overlay { padding: 0; align-items: stretch; }
+  .active-call-card { width: 100%; height: 100dvh; min-height: 100dvh; max-height: 100dvh; border-radius: 0; padding: max(10px,env(safe-area-inset-top)) 10px max(14px,env(safe-area-inset-bottom)); }
+  .call-remote-area { min-height: 0; flex: 1; }
+  .local-video { width: 92px; height: 130px; top: 14px; right: 14px; }
+  .call-controls { padding-bottom: max(8px,env(safe-area-inset-bottom)); }
+  .call-control { width: 54px; height: 54px; }
+  .incoming-call-card { align-self: flex-end; width: 100%; border-radius: 24px 24px 0 0; padding: 24px 18px max(22px,env(safe-area-inset-bottom)); }
+}
+@media (max-width: 360px) {
+  .header-actions .call-button { flex-basis: 32px; min-width: 32px; width: 32px; }
+  #chatMenuButton { flex-basis: 32px; min-width: 32px; width: 32px; }
+  .header-name { max-width: 22vw; }
+}
