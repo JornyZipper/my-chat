@@ -1,4 +1,4 @@
-const CACHE = "burmalchat-shell-v5";
+const CACHE = "burmalpticajopachat-shell-v6";
 const SHELL = ["/", "/index.html", "/style.css", "/app.js", "/calls.js", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", event => {
@@ -30,8 +30,8 @@ self.addEventListener("fetch", event => {
 
 self.addEventListener("push", event => {
   let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch { data = { title: "Burmalchat", body: event.data?.text() || "Новое сообщение" }; }
-  event.waitUntil(self.registration.showNotification(data.title || "Burmalchat", {
+  try { data = event.data ? event.data.json() : {}; } catch { data = { title: "BurmalpticajopaChat", body: event.data?.text() || "Новое сообщение" }; }
+  event.waitUntil(self.registration.showNotification(data.title || "BurmalpticajopaChat", {
     body: data.body || "Новое сообщение",
     icon: data.icon || "/icon.svg",
     badge: data.badge || "/icon.svg",

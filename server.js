@@ -524,7 +524,7 @@ app.post("/api/auth/register", async (req, res) => {
             try {
                 await email(
                     emailValue,
-                    "Подтверждение Burmalchat",
+                    "Подтверждение BurmalpticajopaChat",
                     `<p>Привет, ${displayName}!</p><p>Нажми <a href="${url}">здесь</a>, чтобы подтвердить email.</p>`
                 );
             } catch (mailError) {
@@ -601,7 +601,7 @@ app.post("/api/auth/forgot", async (req, res) => {
             const url = `${APP_URL || ""}/?reset=${encodeURIComponent(token)}`;
             await email(
                 emailValue,
-                "Сброс пароля Burmalchat",
+                "Сброс пароля BurmalpticajopaChat",
                 `<p>Привет!</p><p>Сбросить пароль можно <a href="${url}">по этой ссылке</a>. Ссылка действует 30 минут.</p>`
             );
         }
@@ -1428,7 +1428,7 @@ async function init() {
     await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_message_id TEXT").catch(() => {});
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS messages_sender_client_message_id_idx ON messages(sender_id,client_message_id) WHERE client_message_id IS NOT NULL").catch(() => {});
     server.listen(PORT, "0.0.0.0", () => {
-        console.log(`Burmalchat running on port ${PORT}`);
+        console.log(`BurmalpticajopaChat running on port ${PORT}`);
         if (!mailer) console.log("SMTP not configured: email sending is disabled.");
         if (!vapidReady) console.log("VAPID not configured: push notifications are disabled.");
     });

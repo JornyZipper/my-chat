@@ -1,11 +1,11 @@
 {
-  "name": "Burmalchat",
-  "short_name": "Burmalchat",
+  "name": "BurmalpticajopaChat",
+  "short_name": "BurmalpticajopaChat",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#edf4fb",
   "theme_color": "#edf4fb",
-  "description": "Burmalchat — личный мессенджер",
+  "description": "BurmalpticajopaChat — личный мессенджер",
   "icons": [
     {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
   ]
