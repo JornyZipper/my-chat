@@ -946,6 +946,237 @@ app.get("/api/media/:id", async (req, res) => {
    MESSAGE ACTIONS
 ================================ */
 
+// HTTP-совместимость для Windows-приложения.
+app.post("/api/messages", authMiddleware, async (req, res) => {
+    try {
+        const input = req.body && typeof req.body === "object"
+            ? req.body
+            : {};
+
+        const nested = input.message &&
+            typeof input.message === "object"
+            ? input.message
+            : {};
+
+        const data = { ...input, ...nested };
+
+        const text = clean(
+            data.text ??
+            data.content ??
+            (typeof input.message === "string" ? input.message : ""),
+            4000
+        );
+
+        const attachmentId = data.attachmentId
+            ? clean(data.attachmentId, 128)
+            : null;
+
+        const replyToId = data.replyToId
+            ? clean(data.replyToId, 128)
+            : null;
+
+        const clientMessageId = clean(
+            data.clientMessageId || data.clientId || "",
+            80
+        ) || null;
+
+        let targetId = clean(
+            data.toUserId ||
+            data.recipientId ||
+            data.receiverId ||
+            data.targetUserId ||
+            data.chatUserId ||
+            data.withUserId ||
+            data.userId ||
+            "",
+            128
+        );
+
+        const chatKey = clean(
+            data.conversationId || data.chatId || "",
+            128
+        );
+
+        let conversationId = null;
+
+        // Если приложение передало ID существующего чата,
+        // определяем собеседника и проверяем членство в чате.
+        if (chatKey) {
+            const result = await pool.query(
+                `SELECT c.id, other.user_id AS target_id
+                 FROM conversations c
+                 JOIN conversation_members me
+                   ON me.conversation_id = c.id
+                  AND me.user_id = $2
+                 JOIN conversation_members other
+                   ON other.conversation_id = c.id
+                  AND other.user_id <> $2
+                 WHERE c.id = $1
+                   AND c.type = 'direct'
+                 LIMIT 1`,
+                [chatKey, req.userId]
+            );
+
+            if (result.rows[0]) {
+                conversationId = result.rows[0].id;
+
+                if (
+                    targetId &&
+                    targetId !== result.rows[0].target_id
+                ) {
+                    return res.status(400).json({
+                        error: "Получатель не совпадает с выбранным чатом."
+                    });
+                }
+
+                targetId = result.rows[0].target_id;
+            } else if (!targetId) {
+                // Некоторые клиенты используют chatId
+                // как ID пользователя, а не разговора.
+                targetId = chatKey;
+            }
+        }
+
+        if (!targetId) {
+            return res.status(400).json({
+                error: "Не указан получатель сообщения."
+            });
+        }
+
+        if (targetId === req.userId) {
+            return res.status(400).json({
+                error: "Нельзя отправить сообщение самому себе."
+            });
+        }
+
+        if (!text && !attachmentId) {
+            return res.status(400).json({
+                error: "Введите текст или прикрепите файл."
+            });
+        }
+
+        const target = await getUser(targetId);
+        const sender = await getUser(req.userId);
+
+        if (!target || !sender) {
+            return res.status(404).json({
+                error: "Пользователь не найден."
+            });
+        }
+
+        const blocked = await blockedBetween(req.userId, targetId);
+
+        if (blocked.a_blocks_b || blocked.b_blocks_a) {
+            return res.status(403).json({
+                error: "Нельзя отправить сообщение этому пользователю."
+            });
+        }
+
+        if (!conversationId) {
+            conversationId = await ensureDirectConversation(
+                req.userId,
+                targetId
+            );
+        }
+
+        // Ответ можно отправлять только на сообщение из этого чата.
+        if (replyToId) {
+            const reply = await pool.query(
+                `SELECT 1 FROM messages
+                 WHERE id = $1 AND conversation_id = $2`,
+                [replyToId, conversationId]
+            );
+
+            if (!reply.rowCount) {
+                return res.status(400).json({
+                    error: "Сообщение для ответа не найдено в этом чате."
+                });
+            }
+        }
+
+        // Вложения должны принадлежать отправителю.
+        if (attachmentId) {
+            const attachment = await pool.query(
+                `SELECT 1 FROM attachments
+                 WHERE id = $1 AND owner_id = $2`,
+                [attachmentId, req.userId]
+            );
+
+            if (!attachment.rowCount) {
+                return res.status(400).json({
+                    error: "Вложение не найдено или недоступно."
+                });
+            }
+        }
+
+        // Защита от повторной отправки одного clientMessageId.
+        if (clientMessageId) {
+            const existing = await pool.query(
+                `SELECT id FROM messages
+                 WHERE sender_id = $1
+                   AND client_message_id = $2
+                 LIMIT 1`,
+                [req.userId, clientMessageId]
+            );
+
+            if (existing.rows[0]) {
+                const message = await messagePayload(
+                    existing.rows[0].id
+                );
+
+                return res.json({ ok: true, message });
+            }
+        }
+
+        const messageId = id();
+        const deliveredAt = isOnline(targetId) ? new Date() : null;
+
+        await pool.query(
+            `INSERT INTO messages
+             (id, conversation_id, sender_id, text,
+              attachment_id, reply_to_id, client_message_id, delivered_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+                messageId,
+                conversationId,
+                req.userId,
+                text || null,
+                attachmentId,
+                replyToId,
+                clientMessageId,
+                deliveredAt
+            ]
+        );
+
+        const message = await messagePayload(messageId);
+
+        // Доставляем сообщение всем подключённым участникам чата.
+        await broadcastMessageToConversation(conversationId, message);
+        await broadcastChatRefresh([req.userId, targetId]);
+
+        if (!deliveredAt) {
+            try {
+                await pushNotify(
+                    targetId,
+                    pushPayloadForMessage(message, sender)
+                );
+            } catch (pushError) {
+                console.error("Push notification error:", pushError.message);
+            }
+        }
+
+        return res.json({ ok: true, message });
+    } catch (error) {
+        console.error("HTTP message send error:", error);
+
+        if (!res.headersSent) {
+            return res.status(500).json({
+                error: "Не удалось отправить сообщение."
+            });
+        }
+    }
+});
+
 app.patch("/api/messages/:id", authMiddleware, async (req, res) => {
     try {
         const text = clean(req.body.text, 4000);
