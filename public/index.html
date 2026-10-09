@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src https: wss: http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self';">
   <meta name="theme-color" content="#17212b">
-  <title>BurmalpticajopaChat · v2.1</title>
-  <link rel="stylesheet" href="./styles.css?v=20261009b">
+  <title>BurmalpticajopaChat · v3.0</title>
+  <link rel="stylesheet" href="./styles.css?v=20261009c">
+  <link rel="stylesheet" href="./interface-v3.css?v=20261009c">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -85,8 +86,8 @@
 
     <aside class="sidebar">
       <header class="sidebar-header">
-        <div class="sidebar-heading"><p class="eyebrow">BURMALPTICAJOPACHAT · v2.1</p><h1>Сообщения</h1><div id="account-identity" class="account-identity" title="Аккаунт, под которым открыты чаты">Аккаунт: не выполнен вход</div></div>
-        <div class="mobile-top-actions"><button id="mobile-profile-button" class="icon-button header-tool" type="button" title="Мой профиль" aria-label="Мой профиль">☻</button><button id="mobile-admin-button" class="icon-button header-tool hidden" type="button" title="Админ-панель" aria-label="Админ-панель">♢</button><button id="mobile-settings-button" class="icon-button header-tool" type="button" title="Настройки" aria-label="Настройки">⚙</button></div>
+        <div class="sidebar-heading"><p class="eyebrow">BURMALPTICAJOPACHAT · v3.0</p><h1>Сообщения</h1><div id="account-identity" class="account-identity" title="Аккаунт, под которым открыты чаты">Аккаунт: не выполнен вход</div></div>
+        <div class="mobile-top-actions"><button id="mobile-profile-button" class="icon-button header-tool" type="button" title="Мой профиль" aria-label="Мой профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button><button id="mobile-admin-button" class="icon-button header-tool hidden" type="button" title="Админ-панель" aria-label="Админ-панель"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></button><button id="mobile-settings-button" class="icon-button header-tool" type="button" title="Настройки" aria-label="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></button></div>
         <button id="refresh-chats" class="icon-button header-tool" type="button" title="Обновить чаты" aria-label="Обновить чаты"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg></button>
       </header>
       <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg><input id="search-users" type="search" placeholder="Поиск людей и чатов" autocomplete="off"><kbd>Ctrl K</kbd></div>
@@ -94,6 +95,17 @@
       <div class="list-heading"><span id="list-heading-label">Недавние чаты</span><span class="list-heading-line"></span></div>
       <div id="chat-list" class="chat-list"></div>
       <div id="search-results" class="search-results hidden"></div>
+      <nav class="mobile-bottom-nav" aria-label="Нижняя навигация">
+        <button id="mobile-nav-chats" class="mobile-nav-item active" type="button" aria-label="Показать чаты" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H5l-2 1v-7.5a8.5 8.5 0 1 1 18-2Z"/><path d="M8 10h8M8 14h5"/></svg><span>Чаты</span>
+        </button>
+        <button id="mobile-nav-people" class="mobile-nav-item" type="button" aria-label="Показать людей">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19v-2a5.5 5.5 0 0 1 11 0v2zM16 6a3 3 0 0 1 0 6M17 15a5 5 0 0 1 4 4"/></svg><span>Люди</span>
+        </button>
+        <button id="mobile-nav-profile" class="mobile-nav-item" type="button" aria-label="Открыть мой профиль">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Профиль</span>
+        </button>
+      </nav>
       <footer class="sidebar-footer"><div id="my-avatar" class="avatar self-avatar">B</div><div class="me-details"><strong id="my-name">Пользователь</strong><span id="my-verified" class="verified hidden" title="Подтверждённый профиль" aria-label="Подтверждённый профиль">✓</span><span id="my-username">@username</span></div><span class="footer-presence"></span><span id="footer-status" class="footer-status">Подключение…</span><button type="button" id="switch-account" class="switch-account" title="Войти в другой аккаунт">Сменить</button></footer>
     </aside>
 
@@ -205,8 +217,9 @@
       <div class="call-controls"><button id="muteCallButton" class="call-control" type="button" aria-label="Микрофон" aria-pressed="false">🎙</button><button id="cameraCallButton" class="call-control hidden" type="button" aria-label="Камера" aria-pressed="false">📷</button><button id="hangupCallButton" class="call-control hangup" type="button" aria-label="Завершить звонок">☎</button></div>
     </section>
   </div>
-  <script src="./browser-bridge.js?v=20261009b"></script>
-  <script src="./renderer.js?v=20261009b"></script>
-  <script src="./calls.js?v=20261009b"></script>
+  <script src="./browser-bridge.js?v=20261009c"></script>
+  <script src="./renderer.js?v=20261009c"></script>
+  <script src="./calls.js?v=20261009c"></script>
+  <script src="./mobile-ui.js?v=20261009c"></script>
 </body>
 </html>
