@@ -236,6 +236,12 @@ button { -webkit-tap-highlight-color: transparent; }
   .mobile-bottom-nav.telegram-mobile-nav .mobile-nav-item.active{background:rgba(255,255,255,.12); color:#58a4ff; box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
   .mobile-bottom-nav.telegram-mobile-nav .mobile-nav-item.is-primary.active{background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.10));}
   .mobile-bottom-nav.telegram-mobile-nav .mobile-nav-item:active{transform:scale(.98);}
-  .conversation-area{padding-bottom:126px;}
   .chat-view .composer{padding-bottom:max(8px,env(safe-area-inset-bottom) + 2px);}
+}
+
+/* v8.2: avoid bottom bar overlaying chat when opened, and keep list accessible */
+@media(max-width:700px) {
+ .app-shell.mobile-chat-open .mobile-bottom-nav {display:none!important;}
+ .sidebar .chat-list,.sidebar .search-results{scroll-padding-bottom:12px;}
+ .mobile-bottom-nav.telegram-mobile-nav{width:auto;box-sizing:border-box;max-width:calc(100vw - 24px);}
 }

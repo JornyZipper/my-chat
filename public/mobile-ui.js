@@ -29,8 +29,7 @@
   btnContacts.addEventListener('click', () => {
     // 'Люди' is an owner-only directory. Regular users get their own contacts
     // plus exact @username search, never a hidden full-user listing.
-    const ownerDirectoryVisible = !desktopPeople.hidden && !desktopPeople.classList.contains('hidden')
-      && window.getComputedStyle(desktopPeople).display !== 'none';
+    const ownerDirectoryVisible = !desktopPeople.hidden && !desktopPeople.classList.contains('hidden');
     if (ownerDirectoryVisible) desktopPeople.click();
     else desktopChats.click();
     if (search) { search.placeholder = 'Контакты или @username'; search.focus(); }
