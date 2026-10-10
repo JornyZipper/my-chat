@@ -98,11 +98,30 @@
     return result.data || {};
   }
 
+  // Keep small media in a bounded, account-scoped cache. Large video is never cached.
+  const mediaPromiseCache = new Map();
+  let mediaCacheToken = '';
   async function loadAttachmentDataUrl(attachment) {
+    if (mediaCacheToken !== state.token) {
+      mediaPromiseCache.clear();
+      mediaCacheToken = state.token;
+    }
     const path = String(attachment?.url || '');
-    const result = await window.burmalDesktop.mediaRequest({ baseUrl: state.baseUrl, path, token: state.token });
-    if (!result.ok) throw new Error(result.error || `Не удалось открыть файл (HTTP ${result.status}).`);
-    return `data:${result.mimeType || attachment?.mime || 'application/octet-stream'};base64,${result.base64}`;
+    const key = `${state.baseUrl}|${path}`;
+    const cached = mediaPromiseCache.get(key);
+    if (cached) return cached;
+    const task = (async () => {
+      const result = await window.burmalDesktop.mediaRequest({ baseUrl: state.baseUrl, path, token: state.token });
+      if (!result.ok) throw new Error(result.error || `Не удалось открыть файл (HTTP ${result.status}).`);
+      const url = `data:${result.mimeType || attachment?.mime || 'application/octet-stream'};base64,${result.base64}`;
+      // At most ~2 MiB per cached media. Keep videos and large photos out of RAM cache.
+      if (url.length > 2_500_000 && mediaPromiseCache.get(key) === task) mediaPromiseCache.delete(key);
+      return url;
+    })();
+    mediaPromiseCache.set(key, task);
+    if (mediaPromiseCache.size > 12) mediaPromiseCache.delete(mediaPromiseCache.keys().next().value);
+    task.catch(() => { if (mediaPromiseCache.get(key) === task) mediaPromiseCache.delete(key); });
+    return task;
   }
 
   function absoluteAssetUrl(value) {
@@ -118,7 +137,6 @@
 
   function paintAvatar(element, user) {
     if (!element) return;
-    element.replaceChildren();
     element.classList.add('avatar-ready');
     const isOfficialSupport = user?.id === 'bpc-official-support';
     let url = isOfficialSupport
@@ -130,6 +148,10 @@
     }
     element.style.background = user?.avatarColor || '';
     if (url) {
+      // Preserve existing avatar while online status / chat previews refresh.
+      const displayed = element.querySelector('img.avatar-image');
+      if (displayed && displayed.src === url) return;
+      element.replaceChildren();
       const image = document.createElement('img');
       image.src = url;
       image.alt = '';
@@ -142,7 +164,9 @@
       };
       element.append(image);
     } else {
-      element.textContent = initials(user?.displayName || user?.username);
+      const text = initials(user?.displayName || user?.username);
+      if (!element.querySelector('img') && element.textContent === text) return;
+      element.textContent = text;
     }
   }
 
@@ -682,20 +706,42 @@
       }
     }
   }
+  // Diff existing rows so a new message never reloads avatars in unrelated chats.
+  function reconcileNodes(parent, desired) {
+    let cursor = parent.firstChild;
+    for (const node of desired) {
+      if (cursor === node) { cursor = cursor.nextSibling; continue; }
+      parent.insertBefore(node, cursor);
+    }
+    while (cursor) {
+      const next = cursor.nextSibling;
+      cursor.remove();
+      cursor = next;
+    }
+  }
   function renderChatList() {
-    chatList.replaceChildren();
+    const oldRows = new Map(Array.from(chatList.querySelectorAll('[data-chat-user-id]'), node => [node.dataset.chatUserId, node]));
+    const rows = [];
     if (!state.chats.length) {
       const empty = document.createElement('div');
       empty.className = 'no-results';
       empty.textContent = isOwner() ? 'Пока нет чатов. Открой вкладку «Люди».' : 'Пока нет чатов. Когда тебе напишут, переписка появится здесь.';
-      chatList.append(empty);
+      reconcileNodes(chatList, [empty]);
       return;
     }
-    const fragment = document.createDocumentFragment();
     for (const chat of state.chats) {
       const user = chat.user || {};
       if (!isOwner() && searchInput.value.trim() && !`${user.username || ''} ${user.displayName || ''}`.toLowerCase().includes(searchInput.value.trim().toLowerCase())) continue;
+      const chatId = String(user.id || '');
+      const signature = JSON.stringify([user.displayName,user.username,user.avatarUrl,user.avatarColor,user.verified,user.ownerBadge,state.avatarRevisionById.get(user.id), chat.lastMessage?.text, chat.lastMessage?.time, state.selectedUser?.id === user.id]);
+      const oldButton = oldRows.get(chatId);
+      if (oldButton && oldButton.dataset.renderSignature === signature) {
+        rows.push(oldButton);
+        continue;
+      }
       const button = document.createElement('button');
+      button.dataset.chatUserId = chatId;
+      button.dataset.renderSignature = signature;
       button.type = 'button';
       button.className = `chat-row${state.selectedUser?.id === user.id ? ' active' : ''}`;
       const avatar = document.createElement('div');
@@ -726,9 +772,9 @@
       let pressTimer = null;
       button.addEventListener('touchstart', () => { pressTimer = setTimeout(() => { pressTimer = null; viewUserProfile(user); }, 650); }, { passive: true });
       ['touchend','touchcancel','touchmove'].forEach(evt => button.addEventListener(evt, () => clearTimeout(pressTimer), { passive: true }));
-      fragment.append(button);
+      rows.push(button);
     }
-    chatList.append(fragment);
+    reconcileNodes(chatList, rows);
   }
 
   function updateDirectoryTabs() {
@@ -793,6 +839,10 @@
 
   async function openChat(user) {
     if (!user?.id) return;
+    if (state.selectedUser?.id === user.id && !$('chat-view').classList.contains('hidden')) {
+      appScreen.classList.add('mobile-chat-open');
+      return;
+    }
     state.selectedUser = { ...user, ...(state.usersById.get(user.id) || {}) };
     state.directoryMode = 'chats';
     searchInput.value = '';
@@ -842,19 +892,39 @@
     const oldScrollHeight = messageList.scrollHeight;
     const oldTop = messageList.scrollTop;
     const wasAtBottom = oldScrollHeight - oldTop - messageList.clientHeight < 95;
-    messageList.replaceChildren();
     if (!state.messages.length) {
-      const empty = document.createElement('div'); empty.className = 'empty-messages'; empty.textContent = 'Это начало вашей переписки. Напиши первое сообщение.'; messageList.append(empty); return;
+      const empty = document.createElement('div'); empty.className = 'empty-messages'; empty.textContent = 'Это начало вашей переписки. Напиши первое сообщение.';
+      reconcileNodes(messageList, [empty]); return;
     }
-    const fragment = document.createDocumentFragment();
+    const oldItems = new Map(Array.from(messageList.querySelectorAll('article[data-message-id]'), node => [node.dataset.messageId, node]));
+    const oldDates = new Map(Array.from(messageList.querySelectorAll('.message-date[data-date]'), node => [node.dataset.date, node]));
+    const desired = [];
     let lastDate = '';
     for (const message of state.messages) {
       const date = new Date(message.createdAt || Date.now());
       const dateStr = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
       if (dateStr && dateStr !== lastDate) {
-        const dateRow = document.createElement('div'); dateRow.className = 'message-date'; dateRow.textContent = dateStr; fragment.append(dateRow); lastDate = dateStr;
+        const dateRow = oldDates.get(dateStr) || document.createElement('div');
+        dateRow.className = 'message-date'; dateRow.dataset.date = dateStr; dateRow.textContent = dateStr;
+        desired.push(dateRow); lastDate = dateStr;
+      }
+      // Unchanged messages keep their real DOM nodes: no media download, flicker, or playback reset.
+      const authorProfile = state.usersById.get(message.senderId) || (message.senderId === state.profile?.id ? state.profile : state.selectedUser);
+      const signature = JSON.stringify([
+        message.senderId, message.senderUsername, message.senderDisplayName, message.senderVerified,
+        authorProfile?.verified, authorProfile?.ownerBadge,
+        message.text, message.deleted, message.createdAt, message.forwarded,
+        message.replyTo?.id, message.replyTo?.text, message.replyTo?.username,
+        message.attachment?.id, message.attachment?.mime, message.attachment?.filename,
+        message.reactions, Boolean(message.readAt), Boolean(message.deliveredAt), state.profile?.id
+      ]);
+      const oldItem = oldItems.get(String(message.id));
+      if (oldItem && oldItem.dataset.renderSignature === signature) {
+        desired.push(oldItem);
+        continue;
       }
       const item = document.createElement('article');
+      item.dataset.renderSignature = signature;
       const mine = message.senderId === state.profile?.id;
       item.className = `message${mine ? ' mine' : ''}`;
       if (!mine) {
@@ -900,9 +970,9 @@
       if (mine) {
         const receipt = document.createElement('span'); receipt.textContent = message.readAt ? '✓✓' : message.deliveredAt ? '✓✓' : '✓'; receipt.style.color = message.readAt ? '#9db5ff' : 'inherit'; meta.append(receipt);
       }
-      item.append(meta); fragment.append(item);
+      item.append(meta); desired.push(item);
     }
-    messageList.append(fragment);
+    reconcileNodes(messageList, desired);
     if (!keepScroll || wasAtBottom) messageList.scrollTop = messageList.scrollHeight;
     else messageList.scrollTop = oldTop;
     // Lazy thumbnails may change height later. Do not jump while user reads older messages.
