@@ -64,7 +64,10 @@
     if (!mobile()) return;
     window.setTimeout(() => {
       updateHeight();
-      if (messageList) messageList.scrollTop = messageList.scrollHeight;
+      // Do not move the reader from older messages to bottom just because keyboard opened.
+      if (messageList && messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 100) {
+        messageList.scrollTop = messageList.scrollHeight;
+      }
     }, 140);
   });
 })();

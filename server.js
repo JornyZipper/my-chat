@@ -88,6 +88,7 @@ function verifyToken(token) {
     try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
 }
 function issueToken(userId) { return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: '30d' }); }
+let officialOwnerBadgeId = null; // loaded from app_admin_owner; never inferred just from username
 function publicProfile(row, viewerId = null) {
     if (!row) return null;
     const online = isOnline(row.id);
@@ -102,6 +103,7 @@ function publicProfile(row, viewerId = null) {
         presenceStatus: row.presence_status || 'online',
         online: online && canShowOnline,
         verified: Boolean(row.verified_badge),
+        ownerBadge: Boolean(row.verified_badge && officialOwnerBadgeId === row.id && norm(row.username) === 'z1pperj'),
         privacyOnline: row.privacy_online || 'everyone',
         avatarUrl: row.avatar_data ? `/api/avatar/${row.id}` : '',
         avatarColor: row.avatar_color || '#3390ec',
@@ -309,6 +311,7 @@ function createOwnerAdmin({ pool, authMiddleware, broadcastPresence, verifiedUse
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    officialOwnerBadgeId = await currentOwnerId();
   }
 
   async function currentOwnerId() {
@@ -383,6 +386,7 @@ function createOwnerAdmin({ pool, authMiddleware, broadcastPresence, verifiedUse
         // The authenticated account + matching secret claim both the admin slot and badge.
         await client.query('UPDATE users SET verified_badge=TRUE WHERE id=$1', [req.userId]);
         await client.query('COMMIT');
+        officialOwnerBadgeId = req.userId;
       } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -1381,14 +1385,15 @@ app.post('/api/push/subscribe', authMiddleware, async (req, res) => {
 ================================ */
 app.get('/api/rtc-config', authMiddleware, (_req, res) => {
     const iceServers = [
-        { urls: String(process.env.RTC_STUN_URLS || 'stun:stun.cloudflare.com:3478').split(',').map(v => v.trim()).filter(Boolean) }
+        { urls: String(process.env.RTC_STUN_URLS || 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302').split(',').map(v => v.trim()).filter(Boolean) }
     ];
     const turnUrls = String(process.env.RTC_TURN_URLS || '').split(',').map(v => v.trim()).filter(Boolean);
     if (turnUrls.length && process.env.RTC_TURN_USERNAME && process.env.RTC_TURN_CREDENTIAL) {
         iceServers.push({ urls: turnUrls, username: process.env.RTC_TURN_USERNAME,
             credential: process.env.RTC_TURN_CREDENTIAL });
     }
-    res.json({ iceServers });
+    res.set('Cache-Control', 'no-store');
+    res.json({ iceServers, turnConfigured: iceServers.some(s => s.username && s.credential) });
 });
 
 /* ================================

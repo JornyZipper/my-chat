@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src https: wss: http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self';">
   <meta name="theme-color" content="#17212b">
-  <title>BurmalpticajopaChat · v7.0</title>
-  <link rel="stylesheet" href="./styles.css?v=20261010v7">
-  <link rel="stylesheet" href="./interface-v3.css?v=20261010v7">
-  <link rel="stylesheet" href="./mobile-profile-v4.css?v=20261010v7">
-  <link rel="stylesheet" href="./official-numbers-v6.css?v=20261010v7">
-  <link rel="stylesheet" href="./telegram-features-v7.css?v=20261010v7">
+  <title>BurmalpticajopaChat · v8.0</title>
+  <link rel="stylesheet" href="./styles.css?v=20261010v8">
+  <link rel="stylesheet" href="./interface-v3.css?v=20261010v8">
+  <link rel="stylesheet" href="./mobile-profile-v4.css?v=20261010v8">
+  <link rel="stylesheet" href="./official-numbers-v6.css?v=20261010v8">
+  <link rel="stylesheet" href="./telegram-features-v7.css?v=20261010v8">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -163,6 +163,12 @@
         <button id="close-settings" class="modal-close" type="button" aria-label="Закрыть">×</button>
         <p class="eyebrow">ПРИВАТНОСТЬ</p><h2 id="settings-title">Телефон и безопасность</h2>
         <p class="modal-description">Обычный номер скрыт по умолчанию. Официальный +888 виден всем и заменяет обычный номер в профиле.</p>
+        <div class="v8-settings-block">
+          <h3>Уведомления</h3>
+          <label class="phone-privacy-check"><input id="v8-popups-enabled" type="checkbox" checked> Показывать всплывающие уведомления о сообщениях</label>
+          <p class="v8-helper">На Android системные уведомления требуют разрешения. В этой версии они работают, когда приложение открыто.</p>
+          <button id="v8-settings-accounts" class="secondary-button full-width" type="button">Переключить аккаунт</button>
+        </div>
         <div class="phone-current"><strong>Мой номер</strong><span id="current-phone">Не привязан</span></div>
         <label class="field-label" for="call-privacy">Кто может мне звонить</label>
         <select class="plain-field" id="call-privacy"><option value="everyone">Все пользователи</option><option value="contacts">Мои собеседники</option><option value="nobody">Никто</option></select>
@@ -270,6 +276,18 @@
         </div><div class="v7-sheet-note">Откроется галерея Android или системный выбор файлов. Выбранные медиа появятся для предпросмотра.</div>
       </div></div>
     <div id="v7-message-menu" class="v7-context hidden" role="dialog" aria-label="Действия с сообщением"></div>
+    <div id="v8-accounts-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Переключение аккаунта">
+      <div class="modal-card v8-account-card">
+        <button type="button" id="v8-accounts-close" class="modal-close" aria-label="Закрыть">×</button>
+        <p class="eyebrow">АККАУНТЫ</p><h2>Переключить аккаунт</h2>
+        <p class="modal-description">Выбери сохранённый аккаунт. Повторный пароль не нужен, пока сессия действительна.</p>
+        <div id="v8-accounts-list"></div>
+        <button id="v8-add-account" type="button" class="primary-button full-width">＋ Добавить аккаунт</button>
+      </div>
+    </div>
+    <button id="v8-notification" class="v8-notification hidden" type="button" aria-live="polite">
+      <span class="v8-notification-icon">✉</span><span><strong id="v8-notification-title"></strong><small id="v8-notification-text"></small></span>
+    </button>
     <div id="media-viewer" class="media-viewer hidden" role="dialog" aria-modal="true" aria-label="Просмотр файла">
       <button id="media-viewer-close" class="media-viewer-close" type="button" aria-label="Закрыть просмотр">×</button>
       <div id="media-viewer-stage" class="media-viewer-stage"><img id="media-viewer-image" class="hidden" alt="Изображение из переписки"/><video id="media-viewer-video" class="hidden" controls playsinline></video></div>
@@ -292,11 +310,11 @@
       <div class="call-controls"><button id="muteCallButton" class="call-control" type="button" aria-label="Микрофон" aria-pressed="false">🎙</button><button id="cameraCallButton" class="call-control hidden" type="button" aria-label="Камера" aria-pressed="false">📷</button><button id="hangupCallButton" class="call-control hangup" type="button" aria-label="Завершить звонок">☎</button></div>
     </section>
   </div>
-  <script src="./browser-bridge.js?v=20261010v7"></script>
-  <script src="./renderer.js?v=20261010v7"></script>
-  <script src="./calls.js?v=20261010v7"></script>
-  <script src="./mobile-ui.js?v=20261010v7"></script>
-  <script src="./mobile-profile-v4.js?v=20261010v7"></script>
-  <script src="./official-numbers-v6.js?v=20261010v7"></script>
+  <script src="./browser-bridge.js?v=20261010v8"></script>
+  <script src="./renderer.js?v=20261010v8"></script>
+  <script src="./calls.js?v=20261010v8"></script>
+  <script src="./mobile-ui.js?v=20261010v8"></script>
+  <script src="./mobile-profile-v4.js?v=20261010v8"></script>
+  <script src="./official-numbers-v6.js?v=20261010v8"></script>
 </body>
 </html>

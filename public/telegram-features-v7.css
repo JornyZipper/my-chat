@@ -44,3 +44,11 @@
   .v7-mic{flex-basis:37px;min-width:37px;width:37px;height:40px}
   .message-image,.message-video{max-width:min(75vw,320px);height:auto}
 }
+
+/* v8 native-like notification and account chooser */
+.v8-owner-badge{display:inline-grid!important;place-items:center!important;background:#08090b!important;color:#fff!important;border:1px solid #9bafc0!important;border-radius:50%!important;width:18px!important;height:18px!important;min-width:18px!important;font-size:12px!important;font-weight:900!important;box-shadow:0 0 0 2px rgba(5,9,15,.25);vertical-align:middle;line-height:1!important}
+.v8-notification{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;transform:translateX(-50%);z-index:3000;display:flex;gap:12px;align-items:center;width:min(460px,calc(100% - 24px));padding:13px 17px;text-align:left;border:1px solid #37546a;border-radius:18px;background:#213447;color:white;box-shadow:0 12px 45px #0008;cursor:pointer}
+.v8-notification.hidden{display:none}.v8-notification span:last-child{display:grid;min-width:0;gap:3px}.v8-notification strong,.v8-notification small{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.v8-notification small{font-size:13px;color:#d1dfed}.v8-notification-icon{font-size:23px;color:#5fb0ff}
+.v8-settings-block{margin:18px 0;padding:15px;border:1px solid #2b4255;border-radius:16px;background:#162638}.v8-settings-block h3{margin:0 0 12px}.v8-settings-block .phone-privacy-check{display:flex;align-items:center;gap:10px;line-height:1.45}.v8-helper{color:#9ab1c3;font-size:12px;line-height:1.5}.v8-settings-block button{margin-top:12px}
+.v8-account-card{max-height:min(82dvh,680px);overflow-y:auto}.v8-account-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid #273e52;padding:8px 0}.v8-account-select{border:0;background:#1c3042;color:#fff;text-align:left;padding:14px;min-width:0;flex:1;border-radius:12px;font:inherit}.v8-account-remove{border:0;background:#3d2530;color:#ffbac2;border-radius:12px;min-width:43px;height:43px;font-size:25px}.v8-account-card>.primary-button{margin-top:15px}
+@media(max-width:600px){.v8-notification{top:calc(env(safe-area-inset-top,0px) + 8px)}.v8-owner-badge{width:17px!important;height:17px!important;min-width:17px!important}}

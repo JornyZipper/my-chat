@@ -58,6 +58,7 @@
     const statuses = { online: 'В сети', away: 'Нет на месте', dnd: 'Не беспокоить' };
     $('bp4-status').textContent = statuses[profile.presenceStatus] || 'В сети';
     $('bp4-verified').hidden = !profile.verified;
+    $('bp4-verified').classList.toggle('v8-owner-badge', Boolean(profile.ownerBadge));
     $('bp4-people').hidden = String(profile.username || '').toLowerCase() !== 'z1pperj';
     $('bp4-official').textContent = profile.officialNumber || 'Номер +888 не привязан';
     $('bp4-phone-label').textContent = profile.officialNumber || profile.linkedPhone || profile.phone || 'Номер не привязан';

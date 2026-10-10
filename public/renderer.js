@@ -27,7 +27,9 @@
     voiceRecorder: null,
     pendingAvatarFile: null,
     pendingAvatarObjectUrl: null,
-    avatarRevisionById: new Map()
+    avatarRevisionById: new Map(),
+    seenNotificationIds: new Set(),
+    popupsEnabled: localStorage.getItem('burmal.popups.v8') !== 'off'
   };
 
   const authScreen = $('auth-screen');
@@ -339,6 +341,7 @@
     $('my-username').textContent = `@${state.profile.username || ''}`;
     $('account-identity').textContent = `Вы вошли как @${state.profile.username || '?'} · ID ${String(state.profile.id || '').slice(0, 8)}`;
     $('my-verified').classList.toggle('hidden', !state.profile.verified);
+    $('my-verified').classList.toggle('v8-owner-badge', Boolean(state.profile.ownerBadge));
     const preview = $('profile-avatar-preview');
     if (preview) paintAvatar(preview, state.profile);
   }
@@ -355,6 +358,114 @@
     $('attach-button').disabled = !enabled;
   }
 
+  // Keep multiple *server-issued* sessions. Never store passwords or SMS codes.
+  const ACCOUNTS_KEY = 'burmal.saved-accounts.v8';
+  function savedAccounts() {
+    try {
+      const rows = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '[]');
+      return Array.isArray(rows) ? rows.filter(x => x && typeof x.id === 'string' && typeof x.token === 'string').slice(0, 5) : [];
+    } catch { return []; }
+  }
+  function saveAccounts(rows) { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(rows.slice(0, 5))); }
+  function rememberAccount() {
+    if (!state.profile?.id || !state.token) return;
+    const p = state.profile;
+    saveAccounts([{id: String(p.id), username: String(p.username || ''),
+      displayName: String(p.displayName || p.username || ''), token: state.token},
+      ...savedAccounts().filter(x => x.id !== p.id)]);
+  }
+  function forgetCurrentAccount() {
+    if (state.profile?.id) saveAccounts(savedAccounts().filter(x => x.id !== state.profile.id));
+  }
+  function resetSession() {
+    disconnectSocket(); $('admin-button').classList.add('hidden'); $('mobile-admin-button').classList.add('hidden');
+    state.token = ''; state.profile = null; state.chats = []; state.directory = [];
+    state.usersById.clear(); state.selectedUser = null; state.selectedConversationId = null;
+    state.messages = []; state.avatarRevisionById.clear(); state.seenNotificationIds.clear();
+    appScreen.classList.remove('mobile-chat-open'); localStorage.removeItem('burmal.token');
+    setComposerEnabled(false); showAuth();
+  }
+  function showAccountPicker() {
+    const modal = $('v8-accounts-modal');
+    const list = $('v8-accounts-list'); list.replaceChildren();
+    for (const account of savedAccounts()) {
+      const row = document.createElement('div'); row.className = 'v8-account-row';
+      const name = document.createElement('button'); name.type = 'button'; name.className = 'v8-account-select';
+      name.textContent = `${account.displayName} · @${account.username}${state.profile?.id === account.id ? '  ✓ текущий' : ''}`;
+      name.addEventListener('click', async () => {
+        if (state.profile?.id === account.id) { modal.classList.add('hidden'); return; }
+        modal.classList.add('hidden'); resetSession();
+        state.token = account.token; localStorage.setItem('burmal.token', account.token);
+        try {
+          const result = await api('/api/auth/me');
+          if (!result.profile || result.profile.id !== account.id) throw new Error('Сессия истекла. Войди заново.');
+          state.profile = result.profile; rememberAccount(); showApp(); updateAdminAvailability();
+          connectSocket(); await loadChats();
+        } catch (error) {
+          saveAccounts(savedAccounts().filter(x => x.id !== account.id)); resetSession();
+          showToast(error.message || 'Не удалось переключить аккаунт.', 'error');
+        }
+      });
+      const remove = document.createElement('button'); remove.type = 'button';
+      remove.className = 'v8-account-remove'; remove.title = 'Удалить сохранённый вход'; remove.textContent = '×';
+      remove.addEventListener('click', () => {
+        saveAccounts(savedAccounts().filter(x => x.id !== account.id));
+        if (state.profile?.id === account.id) resetSession();
+        showAccountPicker();
+      });
+      row.append(name, remove); list.append(row);
+    }
+    if (!list.children.length) { const blank = document.createElement('p'); blank.textContent = 'Сохранённых аккаунтов пока нет.'; list.append(blank); }
+    modal.classList.remove('hidden');
+  }
+  $('v8-add-account').addEventListener('click', () => {
+    $('v8-accounts-modal').classList.add('hidden'); resetSession();
+    showToast('Войди в другой аккаунт: прежний вход останется сохранённым.');
+  });
+  $('v8-accounts-close').addEventListener('click', () => $('v8-accounts-modal').classList.add('hidden'));
+  $('v8-accounts-modal').addEventListener('click', e => { if (e.target === $('v8-accounts-modal')) e.target.classList.add('hidden'); });
+  $('v8-settings-accounts').addEventListener('click', () => { $('settings-modal').classList.add('hidden'); showAccountPicker(); });
+  $('v8-popups-enabled').checked = state.popupsEnabled;
+  $('v8-popups-enabled').addEventListener('change', (event) => {
+    state.popupsEnabled = Boolean(event.target.checked);
+    localStorage.setItem('burmal.popups.v8', state.popupsEnabled ? 'on' : 'off');
+    if (state.popupsEnabled) {
+      try { window.BurmalAndroidNotifications?.requestPermission(); } catch {}
+      if (!window.BurmalAndroidNotifications && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+  });
+  function notifyIncoming(message) {
+    if (!state.popupsEnabled || !message?.id || message.senderId === state.profile?.id || state.seenNotificationIds.has(message.id)) return;
+    state.seenNotificationIds.add(message.id);
+    if (state.seenNotificationIds.size > 120) state.seenNotificationIds.delete(state.seenNotificationIds.values().next().value);
+    const user = state.usersById.get(message.senderId) || state.chats.find(x => x.user?.id === message.senderId)?.user;
+    const title = String(user?.displayName || message.senderDisplayName || message.senderUsername || 'Новое сообщение').slice(0, 60);
+    const body = String(message.text || (message.attachment ? '📎 Вложение' : 'Новое сообщение')).slice(0, 160);
+    const pop = $('v8-notification');
+    $('v8-notification-title').textContent = title;
+    $('v8-notification-text').textContent = body;
+    pop.classList.remove('hidden');
+    clearTimeout(notifyIncoming.timer);
+    notifyIncoming.timer = setTimeout(() => pop.classList.add('hidden'), 5400);
+    pop.onclick = async () => {
+      pop.classList.add('hidden');
+      if (user) await openChat(user);
+      else { try { const found = await api(`/api/users/${encodeURIComponent(message.senderId)}`); if (found.profile) await openChat(found.profile); } catch {} }
+    };
+    if (window.BurmalAndroidNotifications) {
+      try { window.BurmalAndroidNotifications.show(title, body, String(message.senderId || '')); } catch {}
+    } else if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+      try { const item = new Notification(title, { body, tag: `burmal-${message.id}` }); item.onclick = () => { window.focus(); pop.click(); item.close(); }; } catch {}
+    }
+  }
+  // Native notification tap: opens the matching conversation when WebView is alive.
+  window.burmalOpenChatFromNotification = async (id) => {
+    const user = state.usersById.get(id) || state.chats.find(x => x.user?.id === id)?.user;
+    if (user) await openChat(user);
+  };
+
   async function finishLogin(data) {
     if (data?.verificationRequired) {
       showToast(data.message || 'Проверь почту для подтверждения регистрации.');
@@ -363,7 +474,9 @@
     if (!data?.token || !data?.profile) throw new Error('Сервер не вернул токен и профиль. Проверь версию сервера.');
     state.token = data.token;
     state.profile = data.profile;
+    state.usersById.set(state.profile.id, state.profile);
     localStorage.setItem('burmal.token', state.token);
+    rememberAccount();
     showApp();
     updateAdminAvailability();
     connectSocket();
@@ -456,6 +569,7 @@
       socket.send(JSON.stringify({ type: 'auth', token: state.token }));
     });
     socket.addEventListener('message', async (event) => {
+      if (socket !== state.socket) return;
       let data;
       try { data = JSON.parse(event.data); } catch { return; }
       if (typeof data.type === 'string' && data.type.startsWith('call_')) {
@@ -476,7 +590,7 @@
           showAuth();
           break;
         case 'message':
-          if (data.message) handleIncomingMessage(data.message);
+          if (data.message) { notifyIncoming(data.message); handleIncomingMessage(data.message); }
           break;
         case 'reaction':
           {const changed=state.messages.find(m=>m.id===data.messageId);if(changed){changed.reactions=data.reactions||[];renderMessages(true);}}
@@ -509,7 +623,14 @@
               const sender = state.usersById.get(message.senderId);
               if (sender) message.senderVerified = Boolean(sender.verified);
             }
-            if (state.messages.length && state.selectedUser) renderMessages(true);
+            if (state.messages.length && state.selectedUser) {
+              messageList.querySelectorAll('[data-message-id]').forEach(node => {
+                const msg = state.messages.find(m => m.id === node.dataset.messageId);
+                if (!msg) return;
+                const badge = node.querySelector('.message-author .verified');
+                if (badge) badge.classList.toggle('v8-owner-badge', !!(state.usersById.get(msg.senderId)?.ownerBadge));
+              });
+            }
           }
           break;
         case 'typing':
@@ -585,7 +706,7 @@
       top.append(name);
       if (user.verified) {
         const badge = document.createElement('span');
-        badge.className = 'verified'; badge.textContent = '✓'; top.append(badge);
+        badge.className = `verified${user.ownerBadge ? ' v8-owner-badge' : ''}`; badge.textContent = '✓'; top.append(badge);
       }
       const bottom = document.createElement('div');
       bottom.className = 'chat-row-bottom';
@@ -659,7 +780,7 @@
       const titleLine = document.createElement('div');
       titleLine.className = 'directory-name-line';
       titleLine.append(name);
-      if (user.verified) { const badge = document.createElement('span'); badge.className = 'verified'; badge.textContent = '✓'; badge.title = 'Подтверждённый профиль'; titleLine.append(badge); }
+      if (user.verified) { const badge = document.createElement('span'); badge.className = `verified${user.ownerBadge ? ' v8-owner-badge' : ''}`; badge.textContent = '✓'; badge.title = user.ownerBadge ? 'Владелец BurmalpticajopaChat' : 'Подтверждённый профиль'; titleLine.append(badge); }
       text.append(titleLine, username); button.append(avatar, text);
       button.addEventListener('click', () => viewUserProfile(user)); searchResults.append(button);
     }
@@ -700,6 +821,7 @@
     $('chat-name').textContent = state.selectedUser.displayName || state.selectedUser.username || 'Пользователь';
     $('chat-status').textContent = state.selectedUser.id === 'bpc-official-support' ? 'Служебный чат · только уведомления' : (state.selectedUser.online ? 'в сети' : 'не в сети');
     $('chat-verified').classList.toggle('hidden', !state.selectedUser.verified);
+    $('chat-verified').classList.toggle('v8-owner-badge', Boolean(state.selectedUser.ownerBadge));
     updateCallActions();
   }
   async function loadMessages(user, keepScroll = true) {
@@ -714,6 +836,7 @@
   function renderMessages(keepScroll = true) {
     const oldScrollHeight = messageList.scrollHeight;
     const oldTop = messageList.scrollTop;
+    const wasAtBottom = oldScrollHeight - oldTop - messageList.clientHeight < 95;
     messageList.replaceChildren();
     if (!state.messages.length) {
       const empty = document.createElement('div'); empty.className = 'empty-messages'; empty.textContent = 'Это начало вашей переписки. Напиши первое сообщение.'; messageList.append(empty); return;
@@ -735,7 +858,8 @@
         author.style.cursor = 'pointer'; author.title = 'Открыть профиль';
         author.addEventListener('click', () => viewUserProfile(state.selectedUser));
         if (message.senderVerified || state.usersById.get(message.senderId)?.verified) {
-          const badge = document.createElement('span'); badge.className = 'verified'; badge.title = 'Подтверждённый профиль'; badge.textContent = '✓'; author.append(badge);
+          const ownerBadge = Boolean((state.usersById.get(message.senderId) || (message.senderId === state.profile?.id ? state.profile : state.selectedUser))?.ownerBadge);
+          const badge = document.createElement('span'); badge.className = `verified${ownerBadge ? ' v8-owner-badge' : ''}`; badge.title = ownerBadge ? 'Владелец BurmalpticajopaChat' : 'Подтверждённый профиль'; badge.textContent = '✓'; author.append(badge);
         }
         item.append(author);
       }
@@ -763,6 +887,7 @@
       }
       enableMessageMenu(item,message);
       item.append(bubble);
+      item.dataset.messageId = String(message.id || '');
       const meta = document.createElement('div'); meta.className = 'message-meta';
       const time = document.createElement('span'); time.textContent = timeLabel(message.createdAt);
       meta.append(time);
@@ -771,9 +896,9 @@
       }
       item.append(meta); messageList.append(item);
     }
-    if (keepScroll) messageList.scrollTop = oldScrollHeight + (messageList.scrollHeight - oldScrollHeight);
-    else messageList.scrollTop = messageList.scrollHeight;
-    void oldTop;
+    if (!keepScroll || wasAtBottom) messageList.scrollTop = messageList.scrollHeight;
+    else messageList.scrollTop = oldTop;
+    // Lazy thumbnails may change height later. Do not jump while user reads older messages.
   }
   function handleIncomingMessage(message) {
     if (state.selectedUser && state.selectedConversationId && message.conversationId === state.selectedConversationId) {
@@ -957,10 +1082,9 @@
   });
   $('refresh-chats').addEventListener('click', () => loadChats().then(() => showToast('Список чатов обновлён.', 'success')).catch(error => showToast(error.message, 'error')));
   $('reload-messages').addEventListener('click', () => state.selectedUser && loadMessages(state.selectedUser, false).catch(error => showToast(error.message, 'error')));
-  $('switch-account').addEventListener('click', () => $('logout-button').click());
+  $('switch-account').addEventListener('click', showAccountPicker);
   $('logout-button').addEventListener('click', () => {
-    disconnectSocket(); $('admin-button').classList.add('hidden'); $('mobile-admin-button').classList.add('hidden'); state.token = ''; state.profile = null; state.chats = []; state.directory = []; state.usersById.clear(); state.selectedUser = null; state.selectedConversationId = null; state.messages = []; state.avatarRevisionById.clear(); appScreen.classList.remove('mobile-chat-open');
-    localStorage.removeItem('burmal.token'); setComposerEnabled(false); showAuth(); showToast('Ты вышел из аккаунта.');
+    forgetCurrentAccount(); resetSession(); showToast('Ты вышел из аккаунта.');
   });
   function showPhoneSettings() {
     if (!state.profile) return;
@@ -1261,10 +1385,11 @@
       state.baseUrl = IS_WEB ? window.location.origin : 'https://my-chat-ucw4.onrender.com';
       const data = await api('/api/profile');
       state.profile = data.profile;
+      if (state.profile) state.usersById.set(state.profile.id, state.profile);
       if (!state.profile) throw new Error('Профиль не найден.');
-      showApp(); updateAdminAvailability(); connectSocket(); await loadChats(); if (!state.chats.length && isOwner()) await switchDirectory('people');
+      rememberAccount(); showApp(); updateAdminAvailability(); connectSocket(); await loadChats(); if (!state.chats.length && isOwner()) await switchDirectory('people');
     } catch {
-      state.token = ''; localStorage.removeItem('burmal.token'); showAuth();
+      forgetCurrentAccount(); resetSession();
     }
   }
 
