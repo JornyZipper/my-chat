@@ -251,6 +251,13 @@
   // Shared bridge used by the WebRTC call module. No Node.js APIs are exposed.
   window.myChatGetCurrentUser = () => state.selectedUser;
   window.myChatGetProfile = () => state.profile;
+  // Refresh the mobile profile immediately after the +888 claim is confirmed.
+  window.addEventListener('burmal:official-number-linked', async () => {
+    if (!state.token) return;
+    try { const result = await api('/api/profile');
+      if (result.profile) { state.profile = result.profile; updateSelfProfile(); }
+    } catch (error) { console.warn('Unable to refresh official number profile', error); }
+  });
   window.myChatResolveAssetUrl = (value) => {
     try { return new URL(String(value || ''), state.baseUrl || undefined).href; }
     catch { return String(value || ''); }
@@ -423,7 +430,7 @@
         case 'auth_ok':
           state.socketReady = true;
           setSocketStatus(true, 'Подключено в реальном времени');
-          setComposerEnabled(Boolean(state.selectedUser));
+          setComposerEnabled(Boolean(state.selectedUser) && state.selectedUser.id !== 'bpc-official-support');
           break;
         case 'auth_error':
           showToast(data.error || 'Не удалось авторизоваться в реальном времени.', 'error');
@@ -650,7 +657,7 @@
     if (!state.selectedUser) return;
     paintAvatar($('chat-avatar'), state.selectedUser);
     $('chat-name').textContent = state.selectedUser.displayName || state.selectedUser.username || 'Пользователь';
-    $('chat-status').textContent = state.selectedUser.online ? 'в сети' : 'не в сети';
+    $('chat-status').textContent = state.selectedUser.id === 'bpc-official-support' ? 'Служебный чат · только уведомления' : (state.selectedUser.online ? 'в сети' : 'не в сети');
     $('chat-verified').classList.toggle('hidden', !state.selectedUser.verified);
   }
   async function loadMessages(user, keepScroll = true) {
@@ -660,7 +667,7 @@
     state.selectedConversationId = data.conversationId || state.selectedConversationId;
     state.messages = (Array.isArray(data.messages) ? data.messages : []).map(message => ({ ...message, senderVerified: Boolean(state.usersById.get(message.senderId)?.verified ?? message.senderVerified) }));
     renderMessages(keepScroll);
-    setComposerEnabled(state.socketReady);
+    setComposerEnabled(state.socketReady && user.id !== 'bpc-official-support');
   }
   function renderMessages(keepScroll = true) {
     const oldScrollHeight = messageList.scrollHeight;

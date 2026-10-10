@@ -29,6 +29,9 @@ const APP_URL = (process.env.APP_URL || '').replace(/\/$/, '');
 const REQUIRE_EMAIL_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
 const VERIFIED_USERNAME = (process.env.VERIFIED_USERNAME || 'Z1pperJ').toLowerCase();
 const VERIFIED_CLAIM_CODE = process.env.VERIFIED_CLAIM_CODE || '';
+const SUPPORT_ID = 'bpc-official-support';
+const SUPPORT_USERNAME = 'BurmalSupport';
+const SUPPORT_NORM = 'burmalsupport';
 if (!DATABASE_URL) { console.error('DATABASE_URL is required.'); process.exit(1); }
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     console.warn('WARNING: Set a strong, stable JWT_SECRET (32+ characters) in Render. Until then, the temporary key makes sessions expire after each restart.');
@@ -104,6 +107,8 @@ function publicProfile(row, viewerId = null) {
         avatarColor: row.avatar_color || '#3390ec',
         createdAt: row.created_at,
         phone: row.phone_verified && (viewerId === row.id || row.phone_visible) ? (row.phone_e164 || '') : '',
+        hasOfficialNumber: Boolean(row.official_number),
+        ...(viewerId === row.id ? { officialNumber: row.official_number || '' } : {}),
         ...(viewerId === row.id ? { phoneVisible: Boolean(row.phone_visible), phoneVerified: Boolean(row.phone_verified) } : {})
     };
 }
@@ -153,7 +158,7 @@ async function blockedBetween(a, b) {
 async function getUser(idValue) {
     const { rows } = await pool.query(
         `SELECT id,username,username_norm,display_name,password_hash,email,email_verified,
-                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified
+                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number
          FROM users WHERE id=$1`,
         [idValue]
     );
@@ -162,7 +167,7 @@ async function getUser(idValue) {
 async function getUserByUsername(username) {
     const { rows } = await pool.query(
         `SELECT id,username,username_norm,display_name,password_hash,email,email_verified,
-                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified
+                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number
          FROM users WHERE username_norm=$1`,
         [norm(username)]
     );
@@ -207,7 +212,7 @@ async function ensureDirectConversation(a, b) {
 async function broadcastPresence() {
     const { rows } = await pool.query(
         `SELECT id,username,display_name,avatar_data,bio,presence_status,
-                privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified
+                privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number
          FROM users ORDER BY username_norm`
     );
     for (const userId of onlineSockets.keys()) {
@@ -428,6 +433,42 @@ function createOwnerAdmin({ pool, authMiddleware, broadcastPresence, verifiedUse
     } catch (error) { console.error('admin/verified:', error); res.status(500).json({ error: 'Не удалось изменить галочку.' }); }
   });
 
+
+  // Official +888 identifiers: owner approval, support DM with one-time code.
+  router.get('/official-numbers', requireOwner, async (_req, res) => {
+    try {
+      const { rows } = await pool.query(`SELECT r.id,r.number,r.status,r.created_at,r.approved_at,
+         u.id AS user_id,u.username,u.display_name FROM official_number_requests r
+         JOIN users u ON u.id=r.user_id ORDER BY (r.status='pending') DESC,r.created_at DESC LIMIT 150`);
+      res.json({ requests: rows.map(r => ({ id:r.id,number:r.number,status:r.status,userId:r.user_id,
+         username:r.username,displayName:r.display_name,createdAt:r.created_at,approvedAt:r.approved_at })) });
+    } catch(e) { console.error('official admin list:',e);res.status(500).json({error:'Ошибка загрузки заявок.'}); }
+  });
+  router.post('/official-numbers/:requestId/approve', requireOwner, async (req,res) => {
+    try {
+      const answer=await approveOfficialRequest(req.params.requestId,req.userId,false);
+      res.json(answer);
+    } catch(e) { officialError(res,e,'Не удалось одобрить заявку.'); }
+  });
+  router.post('/official-numbers/:requestId/resend', requireOwner, async (req,res) => {
+    try { res.json(await approveOfficialRequest(req.params.requestId,req.userId,true)); }
+    catch(e) { officialError(res,e,'Не удалось отправить новый код.'); }
+  });
+  router.post('/official-numbers/:requestId/reject', requireOwner, async (req,res) => {
+    const client=await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result=await client.query(`UPDATE official_number_requests
+        SET status='rejected',code_hash=NULL,code_salt=NULL,code_expires_at=NULL,updated_at=NOW()
+        WHERE id=$1 AND status='pending' RETURNING user_id,number`,[req.params.requestId]);
+      if (!result.rowCount) { await client.query('ROLLBACK');return res.status(409).json({error:'Заявка уже рассмотрена.'}); }
+      await client.query('COMMIT');
+      sendToUser(result.rows[0].user_id,{type:'official_number_update',status:'rejected'});
+      res.json({ok:true});
+    } catch(e) { await client.query('ROLLBACK').catch(()=>{});officialError(res,e,'Не удалось отклонить заявку.'); }
+    finally {client.release();}
+  });
+
   return { router, init };
 };
 
@@ -436,6 +477,146 @@ const ownerAdmin = createOwnerAdmin({
     verifiedUsername: VERIFIED_USERNAME, claimCode: VERIFIED_CLAIM_CODE
 });
 app.use('/api/admin', ownerAdmin.router);
+
+
+/* ================================
+   OFFICIAL +888 NUMBERS (IN-APP IDENTIFIERS, NOT SMS OR REAL PHONE NUMBERS)
+   Admin approves; one-time code delivered only through system Support DM.
+================================ */
+function officialError(res,e,fallback) {
+    if (e?.publicStatus) return res.status(e.publicStatus).json({error:e.message});
+    if (e?.code === '23505') return res.status(409).json({error:'Номер уже занят или у тебя есть активная заявка.'});
+    console.error('Official number:',e);
+    return res.status(500).json({error:fallback});
+}
+function officialFail(status,message){const e=new Error(message);e.publicStatus=status;return e;}
+function officialCodeDigest(requestId,salt,code){return crypto.createHmac('sha256',JWT_SECRET).update(`${requestId}:${salt}:${code}`).digest('hex');}
+function officialValidNumber(input){return /^\d{8}$/.test(String(input||''));}
+const officialRequestThrottle = new Map();
+function officialLimited(userId) {
+    const now=Date.now();
+    if (officialRequestThrottle.size>5000) for(const [k,v] of officialRequestThrottle) if(v.until<now)officialRequestThrottle.delete(k);
+    const record=officialRequestThrottle.get(userId)||{until:now+86400000,count:0};
+    if(record.until<=now){record.until=now+86400000;record.count=0;}
+    record.count++;officialRequestThrottle.set(userId,record);
+    return record.count<=5;
+}
+async function sendOfficialSupportMessage(userId,textValue){
+    const conversationId=await ensureDirectConversation(SUPPORT_ID,userId);
+    const messageId=id();
+    await pool.query(`INSERT INTO messages(id,conversation_id,sender_id,text,delivered_at)
+      VALUES($1,$2,$3,$4,$5)`,[messageId,conversationId,SUPPORT_ID,textValue,isOnline(userId)?new Date():null]);
+    const payload=await messagePayload(messageId);
+    await broadcastMessageToConversation(conversationId,payload);
+    await broadcastChatRefresh([userId]);
+    try { await pushNotify(userId,{title:'Поддержка BurmalpticajopaChat',body:'Новое сообщение о номере +888',data:{userId:SUPPORT_ID}}); } catch(e){console.error('Official push:',e);}
+}
+async function approveOfficialRequest(requestId,ownerId,resend){
+    if(!/^[0-9a-f-]{36}$/.test(String(requestId||''))) throw officialFail(400,'Неверный ID заявки.');
+    const client=await pool.connect();
+    let result;
+    let code;
+    try {
+      await client.query('BEGIN');
+      const locked=await client.query(`SELECT * FROM official_number_requests WHERE id=$1 FOR UPDATE`,[requestId]);
+      const row=locked.rows[0];
+      if(!row || row.status!==(resend?'approved':'pending')) throw officialFail(409,'Заявка недоступна для этого действия.');
+      const ownerOfNumber=await client.query('SELECT id FROM users WHERE official_number=$1',[row.number]);
+      if(ownerOfNumber.rowCount) throw officialFail(409,'Номер уже привязан.');
+      code=String(crypto.randomInt(0,100000000)).padStart(8,'0');
+      const salt=crypto.randomBytes(16).toString('hex');
+      const hash=officialCodeDigest(row.id,salt,code);
+      const approved=await client.query(`UPDATE official_number_requests
+          SET status='approved',approved_by=$2,approved_at=COALESCE(approved_at,NOW()),
+          code_hash=$3,code_salt=$4,code_expires_at=NOW()+INTERVAL '24 hours',code_attempts=0,updated_at=NOW()
+          WHERE id=$1 RETURNING user_id,number`,[row.id,ownerId,hash,salt]);
+      result=approved.rows[0];
+      await client.query('COMMIT');
+    } catch(e) {await client.query('ROLLBACK').catch(()=>{});throw e;}
+    finally {client.release();}
+    // Approval is committed before DM; if sending fails, owner can press "Send code again".
+    await sendOfficialSupportMessage(result.user_id,
+        `Твоя заявка на внутренний номер ${result.number} одобрена. Код подтверждения: ${code}. `+
+        'Действует 24 часа. Открой Профиль → Настройки → Официальный номер и введи этот номер с кодом. Никому не сообщай код.');
+    sendToUser(result.user_id,{type:'official_number_update',status:'approved'});
+    return {ok:true,message:'Код отправлен пользователю в личные сообщения от поддержки.'};
+}
+app.get('/api/official-number/me',authMiddleware,async(req,res)=>{
+  try {
+    const user=await getUser(req.userId);
+    if(!user)return res.status(401).json({error:'Аккаунт не найден.'});
+    const {rows}=await pool.query(`SELECT id,number,status,created_at,code_expires_at
+      FROM official_number_requests WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1`,[req.userId]);
+    res.json({officialNumber:user.official_number||'',request:rows[0]?{
+      id:rows[0].id,number:rows[0].number,status:rows[0].status,
+      createdAt:rows[0].created_at,codeExpiresAt:rows[0].code_expires_at
+    }:null});
+  }catch(e){officialError(res,e,'Не удалось загрузить номер.');}
+});
+app.post('/api/official-number/request',authMiddleware,async(req,res)=>{
+  const digits=String(req.body?.digits||'').trim();
+  if(!officialValidNumber(digits))return res.status(400).json({error:'Введи ровно 8 цифр после +888.'});
+  if(!officialLimited(req.userId))return res.status(429).json({error:'Слишком много заявок. Повтори завтра.'});
+  try {
+    const account=await getUser(req.userId);
+    if(!account || req.userId===SUPPORT_ID)return res.status(403).json({error:'Недоступно для аккаунта.'});
+    if(account.official_number)return res.status(409).json({error:'К аккаунту уже привязан официальный номер.'});
+    const number='+888'+digits;
+    const taken=await pool.query('SELECT 1 FROM users WHERE official_number=$1',[number]);
+    if(taken.rowCount)return res.status(409).json({error:'Этот номер уже занят.'});
+    const requestId=id();
+    await pool.query('INSERT INTO official_number_requests(id,user_id,number) VALUES($1,$2,$3)',[requestId,req.userId,number]);
+    const owner=await pool.query('SELECT user_id FROM app_admin_owner WHERE slot=1');
+    if(owner.rows[0]?.user_id) {
+      const ownerId=owner.rows[0].user_id;
+      sendToUser(ownerId,{type:'official_number_new_request',requestId});
+      // A real private chat notification, not only an unhandled WebSocket event.
+      sendOfficialSupportMessage(ownerId,`Новая заявка на внутренний номер ${number}. Пользователь: @${account.username}. Открой админ-панель → Заявки +888.`)
+        .catch(err=>console.error('Owner request notification:',err));
+    }
+    res.status(201).json({ok:true,request:{id:requestId,number,status:'pending'},message:'Запрос отправлен владельцу.'});
+  }catch(e){officialError(res,e,'Не удалось отправить запрос.');}
+});
+app.post('/api/official-number/cancel',authMiddleware,async(req,res)=>{
+  try {
+    const r=await pool.query(`UPDATE official_number_requests
+      SET status='cancelled',code_hash=NULL,code_salt=NULL,updated_at=NOW()
+      WHERE user_id=$1 AND status='pending' RETURNING id`,[req.userId]);
+    if(!r.rowCount)return res.status(409).json({error:'Нет ожидающей заявки для отмены.'});
+    res.json({ok:true});
+  }catch(e){officialError(res,e,'Не удалось отменить заявку.');}
+});
+app.post('/api/official-number/confirm',authMiddleware,async(req,res)=>{
+    const number=String(req.body?.number||'').trim();
+    const code=String(req.body?.code||'').trim();
+    if(!/^\+888\d{8}$/.test(number)|| !/^\d{8}$/.test(code))return res.status(400).json({error:'Нужен номер +888 и 8-значный код из чата поддержки.'});
+    const client=await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const {rows}=await client.query(`SELECT * FROM official_number_requests
+          WHERE user_id=$1 AND number=$2 AND status='approved' FOR UPDATE`,[req.userId,number]);
+      const r=rows[0];
+      if(!r)throw officialFail(404,'Одобренной заявки с таким номером нет.');
+      if(!r.code_expires_at || new Date(r.code_expires_at).getTime()<=Date.now())throw officialFail(410,'Код истёк. Попроси владельца отправить новый.');
+      if(r.code_attempts>=5)throw officialFail(429,'Попытки исчерпаны. Попроси новый код у владельца.');
+      const hash=officialCodeDigest(r.id,r.code_salt,code);
+      if(!crypto.timingSafeEqual(Buffer.from(hash,'hex'),Buffer.from(r.code_hash,'hex'))){
+         await client.query('UPDATE official_number_requests SET code_attempts=code_attempts+1 WHERE id=$1',[r.id]);
+         await client.query('COMMIT');
+         return res.status(400).json({error:'Неверный код.'});
+      }
+      const occupied=await client.query('SELECT id FROM users WHERE official_number=$1',[number]);
+      if(occupied.rowCount)throw officialFail(409,'Номер уже занят.');
+      await client.query('UPDATE users SET official_number=$1 WHERE id=$2 AND official_number IS NULL',[number,req.userId]);
+      await client.query(`UPDATE official_number_requests SET status='active',code_hash=NULL,code_salt=NULL,
+          code_expires_at=NULL,updated_at=NOW() WHERE id=$1`,[r.id]);
+      await client.query('COMMIT');
+      sendToUser(req.userId,{type:'official_number_update',status:'active'});
+      const profile=publicProfile(await getUser(req.userId),req.userId);
+      res.json({ok:true,profile});
+    }catch(e){await client.query('ROLLBACK').catch(()=>{});officialError(res,e,'Не удалось привязать номер.');}
+    finally {client.release();}
+});
 
 const schema = `
 CREATE TABLE IF NOT EXISTS users (
@@ -554,6 +735,7 @@ app.post('/api/auth/register', async (req, res) => {
         const confirm = req.body.passwordConfirm;
 
         if (!validUsername(username)) return res.status(400).json({ error: 'Неверный username.' });
+        if (norm(username) === SUPPORT_NORM) return res.status(403).json({ error: 'Это имя зарезервировано для поддержки.' });
         if (displayName.length < 1) return res.status(400).json({ error: 'Введите имя.' });
         if (password.length < 8) return res.status(400).json({ error: 'Пароль должен быть не короче 8 символов.' });
         // Desktop clients send passwordConfirm; older browser clients do not yet have this field.
@@ -606,7 +788,7 @@ app.post('/api/auth/login', async (req, res) => {
         const username = clean(req.body.username, 24);
         const password = String(req.body.password || '');
         const user = await getUserByUsername(username);
-        if (!user) return res.status(401).json({ error: 'Неверный username или пароль.' });
+        if (!user || user.id === SUPPORT_ID) return res.status(401).json({ error: 'Неверный username или пароль.' });
         const ok = await bcrypt.compare(password, user.password_hash);
         if (!ok) return res.status(401).json({ error: 'Неверный username или пароль.' });
         if (REQUIRE_EMAIL_VERIFICATION && !user.email_verified) return res.status(403).json({ error: 'Сначала подтверди email.' });
@@ -621,6 +803,8 @@ const PHONE_VERIFY_READY = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env
 const smsLimits = new Map();
 function phoneValue(input) {
     const value = String(input || '').replace(/[()\s-]/g, '');
+    // +888 is only a BurmalpticajopaChat internal identifier, never an SMS destination.
+    if (/^\+888\d{8}$/.test(value)) return null;
     return /^\+[1-9]\d{7,14}$/.test(value) ? value : null;
 }
 function limitPhoneRequest(req, phone, action, max = 5) {
@@ -791,6 +975,7 @@ app.patch('/api/profile', authMiddleware, async (req, res) => {
         const privacyOnline = ['everyone','nobody'].includes(req.body.privacyOnline)
             ? req.body.privacyOnline : user.privacy_online;
         if (!validUsername(username)) return res.status(400).json({ error: 'Неверный username.' });
+        if (norm(username) === SUPPORT_NORM) return res.status(403).json({ error: 'Это имя зарезервировано для поддержки.' });
         if (!displayName) return res.status(400).json({ error: 'Имя не может быть пустым.' });
         const existing = await getUserByUsername(username);
         if (existing && existing.id !== req.userId) return res.status(409).json({ error: 'Этот username уже занят.' });
@@ -862,7 +1047,7 @@ app.get('/api/users', authMiddleware, async (req, res) => {
         let where = 'u.id <> $1';
         if (q) { params.push(`%${q}%`); where += ' AND (u.username_norm LIKE $2 OR lower(u.display_name) LIKE $2)'; }
         const { rows } = await pool.query(
-            `SELECT u.id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,u.phone_e164,u.phone_visible,u.phone_verified,
+            `SELECT u.id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,u.phone_e164,u.phone_visible,u.phone_verified,u.official_number,
                     EXISTS(SELECT 1 FROM blocks b WHERE b.blocker_id=$1 AND b.blocked_id=u.id) AS blocked,
                     EXISTS(SELECT 1 FROM blocks b WHERE b.blocker_id=u.id AND b.blocked_id=$1) AS blocked_me
              FROM users u WHERE ${where}
@@ -892,7 +1077,7 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
     try {
         const { rows } = await pool.query(
             `SELECT c.id AS conversation_id,
-                    u.id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,
+                    u.id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,u.official_number,
                     cm1.pinned,cm1.muted,
                     lm.id AS last_message_id,lm.text AS last_text,lm.created_at AS last_time,lm.sender_id AS last_sender_id,
                     (SELECT COUNT(*) FROM messages um
@@ -1127,6 +1312,7 @@ app.post('/api/messages/:id/forward', authMiddleware, async (req, res) => {
    BLOCK / REPORT
 ================================ */
 app.post('/api/users/:userId/block', authMiddleware, async (req, res) => {
+    if (req.params.userId === SUPPORT_ID) return res.status(403).json({ error: 'Нельзя блокировать служебные сообщения поддержки.' });
     if (req.params.userId === req.userId) return res.status(400).json({ error: 'Нельзя заблокировать себя.' });
     await pool.query('INSERT INTO blocks(blocker_id,blocked_id) VALUES($1,$2) ON CONFLICT DO NOTHING',
         [req.userId, req.params.userId]);
@@ -1206,7 +1392,7 @@ wss.on('connection', ws => {
                 const decoded = verifyToken(String(data.token || ''));
                 if (!decoded?.sub) { send(ws, { type: 'auth_error', error: 'Сессия недействительна.' }); return ws.close(); }
                 const user = await getUser(decoded.sub);
-                if (!user) { send(ws, { type: 'auth_error', error: 'Пользователь не найден.' }); return ws.close(); }
+                if (!user || user.id === SUPPORT_ID) { send(ws, { type: 'auth_error', error: 'Пользователь не найден.' }); return ws.close(); }
                 // Reauth/reconnect cleanup for this socket.
                 if (ws.authed) removeSocket(ws);
                 ws.authed = true;
@@ -1309,6 +1495,7 @@ wss.on('connection', ws => {
                 const replyToId = data.replyToId ? String(data.replyToId) : null;
                 const clientMessageId = clean(data.clientMessageId, 80) || null;
                 if (!targetId || (!text && !attachmentId) || targetId === userId) return;
+                if (targetId === SUPPORT_ID) { send(ws, { type: 'error', error: 'Это служебный канал поддержки: ответы отключены.' }); return; }
                 const target = await getUser(targetId);
                 const sender = await getUser(userId);
                 if (!target || !sender) return;
@@ -1388,6 +1575,23 @@ async function init() {
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_e164 TEXT');
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE');
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_visible BOOLEAN NOT NULL DEFAULT FALSE');
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS official_number TEXT UNIQUE');
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS users_official_number_idx ON users(official_number) WHERE official_number IS NOT NULL');
+    await pool.query(`CREATE TABLE IF NOT EXISTS official_number_requests (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        number TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
+          CHECK(status IN ('pending','approved','active','rejected','cancelled')),
+        code_hash TEXT, code_salt TEXT, code_expires_at TIMESTAMPTZ,code_attempts SMALLINT NOT NULL DEFAULT 0,
+        approved_by TEXT REFERENCES users(id),approved_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS official_request_number_reserved ON official_number_requests(number) WHERE status IN ('pending','approved','active')`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS official_request_one_per_user ON official_number_requests(user_id) WHERE status IN ('pending','approved','active')`);
+    await pool.query(`INSERT INTO users(id,username,username_norm,display_name,password_hash,verified_badge,bio,privacy_online)
+        VALUES($1,$2,$3,'Поддержка BurmalpticajopaChat',$4,TRUE,'Официальные сообщения о номерах +888','nobody')
+        ON CONFLICT DO NOTHING`,[SUPPORT_ID,SUPPORT_USERNAME,SUPPORT_NORM,await bcrypt.hash(crypto.randomBytes(32).toString('hex'),10)]);
+    const supportCheck=await pool.query('SELECT id FROM users WHERE username_norm=$1',[SUPPORT_NORM]);
+    if (supportCheck.rows[0]?.id!==SUPPORT_ID) throw new Error('Имя BurmalSupport занято другим аккаунтом. Освободи его перед запуском.');
     await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS users_phone_unique ON users(phone_e164) WHERE phone_e164 IS NOT NULL');
     await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_message_id TEXT').catch(() => {});
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS messages_sender_client_message_id_idx

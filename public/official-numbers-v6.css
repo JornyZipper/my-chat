@@ -1,0 +1,13 @@
+/* Official in-app numbers +888, mobile first */
+.official-box,.official-admin-panel{margin:22px 0 0;padding:18px;border:1px solid rgba(78,152,205,.32);border-radius:20px;background:linear-gradient(145deg,rgba(40,104,160,.17),rgba(15,29,45,.35))}
+.official-title-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:15px}.official-title-row h3{margin:0 0 6px;font-size:17px;color:#edf6ff}.official-title-row p{margin:0;color:#a8bdce;font-size:12px;line-height:1.5}
+.official-mark{background:#228ddd;color:white;min-width:36px;height:36px;border-radius:13px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.official-input-row{display:flex;align-items:center;border:1px solid rgba(105,162,204,.4);border-radius:13px;overflow:hidden;margin:8px 0 13px;background:#0e1924;max-width:100%}
+.official-input-row span{font-size:19px;font-weight:800;padding:12px;color:#5cc1ff}.official-input-row .plain-field{border:0!important;box-shadow:none!important;min-width:0;width:100%;margin:0!important;letter-spacing:2px;font-size:20px;padding:10px}
+.official-box .primary-button:disabled{opacity:.42;cursor:not-allowed;filter:grayscale(.5)}
+.official-status{font-size:13px;line-height:1.6;color:#bfd1dc;margin:15px 0}.official-my-number{border-radius:13px;background:#0c2334;color:#74c9ff;text-align:center;font-size:24px;font-weight:800;letter-spacing:2px;padding:16px;margin-bottom:12px}
+.official-box label{display:block;margin-top:12px}.official-box #official-refresh{margin-top:12px}.official-box .hint{margin:12px 0}
+.official-admin-panel{margin-top:24px}.official-admin-request{background:#132535;border:1px solid #2a4962;border-radius:13px;padding:14px;margin-top:11px}.official-admin-request strong{color:#e6f8ff;font-size:16px}.official-admin-request p{color:#afc4d4;font-size:12px;margin:6px 0 9px}.official-admin-actions{display:flex;flex-wrap:wrap;gap:8px}.official-admin-actions button{padding:9px 12px;font-size:13px}
+@media(max-width:700px){.official-box,.official-admin-panel{padding:14px;border-radius:17px}.official-my-number{font-size:21px}.official-title-row h3{font-size:16px}.official-admin-actions button{flex:1;min-width:90px}}
+/* Long settings panel must remain scrollable on desktop as well as Android. */
+#settings-modal .modal-card{max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}

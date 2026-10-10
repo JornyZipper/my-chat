@@ -33,6 +33,7 @@
       <h2 class="bp4-section-title">Обо мне</h2>
       <div class="bp4-info">
         <div class="bp4-info-row"><span class="bp4-info-icon">@</span><div><strong id="bp4-username">@username</strong><small>Имя пользователя</small></div></div>
+        <div class="bp4-info-row"><span class="bp4-info-icon">✦</span><div><strong id="bp4-official">Номер +888 не привязан</strong><small>Официальный номер (виден только тебе)</small></div></div>
         <div class="bp4-info-row"><span class="bp4-info-icon">≡</span><div><strong id="bp4-bio">Описание не указано</strong><small>О себе</small></div></div>
         <div class="bp4-info-row"><span class="bp4-info-icon">◌</span><div><strong id="bp4-privacy">Показывать статус</strong><small>Видимость онлайна</small></div></div>
       </div>
@@ -58,6 +59,7 @@
     $('bp4-status').textContent = statuses[profile.presenceStatus] || 'В сети';
     $('bp4-verified').hidden = !profile.verified;
     $('bp4-people').hidden = String(profile.username || '').toLowerCase() !== 'z1pperj';
+    $('bp4-official').textContent = profile.officialNumber || 'Номер +888 не привязан';
     $('bp4-phone-label').textContent = profile.phone || 'Номер не привязан';
     $('bp4-phone-visibility').textContent = profile.phoneVerified ? (profile.phoneVisible ? 'Виден другим пользователям' : 'Скрыт от других') : 'Привязать и настроить приватность';
     const avatar = $('bp4-avatar');
