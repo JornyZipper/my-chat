@@ -1,0 +1,14 @@
+/* v8.5: Real PNG logo on desktop/mobile auth, sidebar, and launcher. */
+.brand-mark,.brand-mark-large,.rail-mark {
+  position:relative!important; display:block!important; overflow:hidden!important;
+  border-radius:50%!important; padding:0!important;
+  background:transparent!important; border:0!important;
+  box-shadow:0 2px 13px rgba(19,133,248,.27)!important;
+  flex-shrink:0;
+}
+.brand-mark img,.brand-mark-large img,.rail-mark img {
+  display:block!important; width:100%!important; height:100%!important;
+  border-radius:50%!important; object-fit:cover!important;
+}
+/* Keep support avatar circular even in compact chat lists. */
+.avatar:has(img[src*="support-icon.png"]) {border-radius:50%!important;overflow:hidden!important}
