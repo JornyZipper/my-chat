@@ -1223,7 +1223,9 @@ app.get('/api/media/:id', async (req, res) => {
         );
         if (!rows[0]) return res.status(404).end();
         res.set('Content-Type', rows[0].mime_type);
-        res.set('Content-Disposition', `inline; filename="${rows[0].filename.replace(/"/g, '')}"`);
+        // Safe ASCII-only header: Unicode filename remains in attachment JSON metadata.
+        // Avoid Node/Electron ByteString errors for files named e.g. "изображение.png".
+        res.set('Content-Disposition', 'inline');
         res.send(rows[0].data);
     } catch { res.status(500).end(); }
 });
