@@ -1,0 +1,48 @@
+/* BurmalpticajopaChat v8.4 — three lightweight user themes.
+   No animated blurs or full-screen backdrop filters, for Android WebView performance. */
+#burmal-theme-picker {margin:18px 0 19px;padding:16px 14px;border:1px solid rgba(132,181,233,.26);border-radius:19px;background:rgba(31,69,116,.15)}
+#burmal-theme-picker h3 {margin:0 0 7px;font-size:16px;line-height:1.3}
+#burmal-theme-picker p {margin:0 0 12px;font-size:12px;line-height:1.5;color:var(--lg-muted,#acbdd1)}
+.burmal-theme-options {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.burmal-theme-choice {border:1px solid rgba(139,191,245,.3);background:rgba(49,98,153,.19);border-radius:13px;min-height:70px;color:inherit;padding:8px 3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;cursor:pointer;font-size:12px;touch-action:manipulation}
+.burmal-theme-choice[aria-pressed="true"] {outline:2px solid #65b9ff;outline-offset:1px;background:rgba(69,154,255,.19)}
+.burmal-theme-swatch {display:block;width:34px;height:27px;border-radius:9px;border:1px solid rgba(184,215,255,.4)}
+.burmal-theme-choice[data-burmal-theme="blue"] .burmal-theme-swatch {background:linear-gradient(135deg,#3785e8,#0a1a35)}
+.burmal-theme-choice[data-burmal-theme="black"] .burmal-theme-swatch {background:linear-gradient(135deg,#33383f,#07090e)}
+.burmal-theme-choice[data-burmal-theme="white"] .burmal-theme-swatch {background:linear-gradient(135deg,#fff,#cbd9ed)}
+/* Black: same glass depth with graphite instead of vivid blue. */
+html[data-burmal-theme="black"],html[data-burmal-theme="black"] body {background:#08090d!important;color:#f5f6f9!important}
+html[data-burmal-theme="black"] .app-shell,html[data-burmal-theme="black"] .bp4-page:not([hidden]) {background:linear-gradient(155deg,#0c0e13,#1b2029 67%,#090b10)!important;color:#f3f6fa!important}
+html[data-burmal-theme="black"] .sidebar,html[data-burmal-theme="black"] .sidebar-header,html[data-burmal-theme="black"] .conversation-area {background:transparent!important}
+html[data-burmal-theme="black"] .chat-row,html[data-burmal-theme="black"] .search-user,html[data-burmal-theme="black"] .bp4-info-row {background:linear-gradient(130deg,#282d38,#151820)!important;border-color:#454c5a!important;box-shadow:0 2px 7px rgba(0,0,0,.23)!important}
+html[data-burmal-theme="black"] .chat-row.active {background:linear-gradient(135deg,#353f50,#202939)!important;border-color:#6a809d!important}
+html[data-burmal-theme="black"] .search-wrap,html[data-burmal-theme="black"] .composer-inner,html[data-burmal-theme="black"] .bp4-header,html[data-burmal-theme="black"] .bp4-info,html[data-burmal-theme="black"] .bp4-actions button {background:linear-gradient(145deg,#2b303b,#171c25)!important;border-color:#515968!important;box-shadow:none!important}
+html[data-burmal-theme="black"] .mobile-bottom-nav.telegram-mobile-nav,html[data-burmal-theme="black"] .bp4-nav {background:linear-gradient(145deg,#2d323d,#11151c)!important;border-color:#566072!important}
+html[data-burmal-theme="black"] .message-bubble,html[data-burmal-theme="black"] .chat-header,html[data-burmal-theme="black"] .composer {background:#242936!important;border-color:#454b59!important}
+html[data-burmal-theme="black"] .message.mine .message-bubble {background:#334357!important}
+html[data-burmal-theme="black"] .modal-card {background:#1c222c!important;border-color:#4a5461!important}
+html[data-burmal-theme="black"] .auth-screen {background:linear-gradient(145deg,#0b0d13,#232a35)!important}
+/* White: actual light surfaces, not inverted photographs/images. */
+html[data-burmal-theme="white"],html[data-burmal-theme="white"] body {background:#edf4fb!important;color:#182d46!important;--lg-muted:#4b6983}
+html[data-burmal-theme="white"] .app-shell,html[data-burmal-theme="white"] .bp4-page:not([hidden]) {background:linear-gradient(165deg,#f6fbff,#e0eefb 68%,#f7fafe)!important;color:#142b46!important}
+html[data-burmal-theme="white"] .app-shell::before {display:none!important}
+html[data-burmal-theme="white"] .sidebar,html[data-burmal-theme="white"] .conversation-area,html[data-burmal-theme="white"] .sidebar-header,html[data-burmal-theme="white"] .bp4-hero {background:transparent!important;color:#142b46!important}
+html[data-burmal-theme="white"] .sidebar-heading h1,html[data-burmal-theme="white"] .sidebar-heading .eyebrow,html[data-burmal-theme="white"] .account-identity,html[data-burmal-theme="white"] .list-heading,html[data-burmal-theme="white"] .bp4-name-line h1,html[data-burmal-theme="white"] .bp4-header strong {color:#142b46!important}
+html[data-burmal-theme="white"] .chat-row,html[data-burmal-theme="white"] .search-user,html[data-burmal-theme="white"] .bp4-info-row {background:linear-gradient(125deg,#fff,#e5f1fc)!important;border-color:#bad7ee!important;color:#152e47!important;box-shadow:0 2px 8px rgba(31,75,112,.1)!important}
+html[data-burmal-theme="white"] .chat-row.active {background:linear-gradient(125deg,#dfedff,#bedefe)!important;border-color:#75b6ed!important}
+html[data-burmal-theme="white"] .chat-row-top strong,html[data-burmal-theme="white"] .chat-row-bottom,html[data-burmal-theme="white"] .chat-time,html[data-burmal-theme="white"] .search-user strong,html[data-burmal-theme="white"] .search-user span {color:#17334f!important}
+html[data-burmal-theme="white"] .search-wrap,html[data-burmal-theme="white"] .composer-inner,html[data-burmal-theme="white"] .bp4-header,html[data-burmal-theme="white"] .bp4-info,html[data-burmal-theme="white"] .bp4-actions button {background:linear-gradient(145deg,#fff,#e2effb)!important;border-color:#a3c7e8!important;box-shadow:0 2px 9px rgba(30,66,111,.1)!important;color:#153552!important}
+html[data-burmal-theme="white"] .search-wrap input,html[data-burmal-theme="white"] .search-wrap input::placeholder,html[data-burmal-theme="white"] .chat-person strong,html[data-burmal-theme="white"] .chat-status,html[data-burmal-theme="white"] .bp4-info-row strong,html[data-burmal-theme="white"] .bp4-info-row small,html[data-burmal-theme="white"] .bp4-section-title {color:#26455f!important}
+html[data-burmal-theme="white"] .mobile-bottom-nav.telegram-mobile-nav,html[data-burmal-theme="white"] .bp4-nav {background:linear-gradient(135deg,#fff,#ddebfa)!important;border-color:#b1cfe9!important;box-shadow:0 4px 15px rgba(33,74,116,.12)!important}
+html[data-burmal-theme="white"] .mobile-bottom-nav.telegram-mobile-nav .mobile-nav-item,html[data-burmal-theme="white"] .bp4-nav button {color:#234968!important}
+html[data-burmal-theme="white"] .mobile-bottom-nav.telegram-mobile-nav .mobile-nav-item.active,html[data-burmal-theme="white"] .bp4-nav button.bp4-selected {background:#c7e2fb!important;color:#065eab!important;border-color:#82bae6!important}
+html[data-burmal-theme="white"] .message-list,html[data-burmal-theme="white"] .chat-wallpaper {background:transparent!important}
+html[data-burmal-theme="white"] .chat-header,html[data-burmal-theme="white"] .composer {background:#e8f2fc!important;border-color:#c0dcf3!important;color:#163d5d!important}
+html[data-burmal-theme="white"] .message-bubble {background:#fff!important;border:1px solid #c2dced!important;color:#152f45!important}
+html[data-burmal-theme="white"] .message.mine .message-bubble {background:#c7e5ff!important;border-color:#8dc4f0!important;color:#092e50!important}
+html[data-burmal-theme="white"] .modal-card {background:#f8fbff!important;color:#173550!important;border-color:#bad5ef!important}
+html[data-burmal-theme="white"] #burmal-theme-picker {background:#e7f0f8;border-color:#b8d2e7}
+html[data-burmal-theme="white"] .burmal-theme-choice {background:#fff;border-color:#c5d5e8;color:#234968}
+html[data-burmal-theme="white"] .auth-screen {background:linear-gradient(145deg,#ecf4fc,#cadff5)!important}
+/* Strong overlays/icons remain readable in all themes. */
+html[data-burmal-theme="white"] .bp4-info-icon,html[data-burmal-theme="white"] .bp4-note {color:#496988!important}

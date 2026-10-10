@@ -41,9 +41,10 @@
       <p class="bp4-note">Номер скрыт от других по умолчанию. Настройки приватности находятся в разделе «Настройки».</p>
     </div>
     <nav class="bp4-nav" aria-label="Основная навигация">
-      <button id="bp4-chats" type="button"><span>☰</span>Чаты</button>
-      <button id="bp4-people" type="button" hidden><span>♙</span>Люди</button>
-      <button class="bp4-selected" id="bp4-profile" type="button" aria-current="page"><span>◉</span>Профиль</button>
+      <button id="bp4-contacts" type="button"><span><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4 20v-2a8 8 0 0 1 16 0v2"/></svg></span>Контакты</button>
+      <button id="bp4-calls" type="button"><span><svg viewBox="0 0 24 24"><path d="m7 3 3 4-2 3a14 14 0 0 0 6 6l3-2 4 3-1 4c-9 1-18-8-17-17z"/></svg></span>Звонки</button>
+      <button id="bp4-chats" class="bp4-selected" type="button"><span><svg viewBox="0 0 24 24"><path d="M21 11a8 8 0 0 1-8 8H5l-2 2v-8a8 8 0 1 1 18-2z"/><path d="M8 11h8M8 14h5"/></svg></span>Чаты</button>
+      <button id="bp4-settings-nav" type="button"><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m19 14 2 1-2 4-3-1-2 2H9l-1-2-3 1-2-4 2-2-1-3 2-3 3 1 2-2h4l2 2 3-1 2 3-2 3z"/></svg></span>Настройки</button>
     </nav>`;
   document.body.appendChild(page);
   const $ = (id) => document.getElementById(id);
@@ -59,7 +60,6 @@
     $('bp4-status').textContent = statuses[profile.presenceStatus] || 'В сети';
     $('bp4-verified').hidden = !profile.verified;
     $('bp4-verified').classList.toggle('v8-owner-badge', Boolean(profile.ownerBadge));
-    $('bp4-people').hidden = String(profile.username || '').toLowerCase() !== 'z1pperj';
     $('bp4-official').textContent = profile.officialNumber || 'Номер +888 не привязан';
     $('bp4-phone-label').textContent = profile.officialNumber || profile.linkedPhone || profile.phone || 'Номер не привязан';
     $('bp4-phone-visibility').textContent = profile.officialNumber ? 'Официальный +888 · виден всем' : (profile.phoneVerified ? (profile.phoneVisible ? 'Виден другим пользователям' : 'Скрыт от других') : 'Привязать и настроить приватность');
@@ -125,7 +125,9 @@
     $('settings-button')?.click();
   });
   $('bp4-chats').addEventListener('click', () => { back(); $('mobile-nav-chats')?.click(); });
-  $('bp4-people').addEventListener('click', () => { back(); $('mobile-nav-people')?.click(); });
+  $('bp4-contacts').addEventListener('click', () => { back(); $('mobile-nav-contacts')?.click(); });
+  $('bp4-calls').addEventListener('click', () => { back(); $('mobile-nav-calls')?.click(); });
+  $('bp4-settings-nav').addEventListener('click', () => { hide(); $('settings-button')?.click(); });
   window.addEventListener('popstate', () => {
     if (!history.state?.burmalProfileV4) hide();
   });

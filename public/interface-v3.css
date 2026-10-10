@@ -225,7 +225,7 @@ button { -webkit-tap-highlight-color: transparent; }
     min-height:86px; padding:10px; border-radius:32px;
     background:rgba(20,20,22,.94); border:1px solid rgba(255,255,255,.08);
     box-shadow:0 22px 45px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06);
-    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); z-index:40;
+      z-index:40;
   }
   .mobile-bottom-nav.telegram-mobile-nav .mobile-nav-item{
     position:relative; min-height:64px; border-radius:24px; gap:7px; padding:8px 4px;

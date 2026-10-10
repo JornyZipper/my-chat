@@ -120,7 +120,10 @@
     if (!element) return;
     element.replaceChildren();
     element.classList.add('avatar-ready');
-    let url = absoluteAssetUrl(user?.avatarUrl);
+    const isOfficialSupport = user?.id === 'bpc-official-support';
+    let url = isOfficialSupport
+      ? new URL('./assets/support-icon.png', document.baseURI).href
+      : absoluteAssetUrl(user?.avatarUrl);
     const revision = state.avatarRevisionById.get(user?.id);
     if (url && revision && url.startsWith('http')) {
       const parsed = new URL(url); parsed.searchParams.set('avatar_v', String(revision)); url = parsed.href;
@@ -688,6 +691,7 @@
       chatList.append(empty);
       return;
     }
+    const fragment = document.createDocumentFragment();
     for (const chat of state.chats) {
       const user = chat.user || {};
       if (!isOwner() && searchInput.value.trim() && !`${user.username || ''} ${user.displayName || ''}`.toLowerCase().includes(searchInput.value.trim().toLowerCase())) continue;
@@ -722,8 +726,9 @@
       let pressTimer = null;
       button.addEventListener('touchstart', () => { pressTimer = setTimeout(() => { pressTimer = null; viewUserProfile(user); }, 650); }, { passive: true });
       ['touchend','touchcancel','touchmove'].forEach(evt => button.addEventListener(evt, () => clearTimeout(pressTimer), { passive: true }));
-      chatList.append(button);
+      fragment.append(button);
     }
+    chatList.append(fragment);
   }
 
   function updateDirectoryTabs() {
@@ -841,12 +846,13 @@
     if (!state.messages.length) {
       const empty = document.createElement('div'); empty.className = 'empty-messages'; empty.textContent = 'Это начало вашей переписки. Напиши первое сообщение.'; messageList.append(empty); return;
     }
+    const fragment = document.createDocumentFragment();
     let lastDate = '';
     for (const message of state.messages) {
       const date = new Date(message.createdAt || Date.now());
       const dateStr = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
       if (dateStr && dateStr !== lastDate) {
-        const dateRow = document.createElement('div'); dateRow.className = 'message-date'; dateRow.textContent = dateStr; messageList.append(dateRow); lastDate = dateStr;
+        const dateRow = document.createElement('div'); dateRow.className = 'message-date'; dateRow.textContent = dateStr; fragment.append(dateRow); lastDate = dateStr;
       }
       const item = document.createElement('article');
       const mine = message.senderId === state.profile?.id;
@@ -894,8 +900,9 @@
       if (mine) {
         const receipt = document.createElement('span'); receipt.textContent = message.readAt ? '✓✓' : message.deliveredAt ? '✓✓' : '✓'; receipt.style.color = message.readAt ? '#9db5ff' : 'inherit'; meta.append(receipt);
       }
-      item.append(meta); messageList.append(item);
+      item.append(meta); fragment.append(item);
     }
+    messageList.append(fragment);
     if (!keepScroll || wasAtBottom) messageList.scrollTop = messageList.scrollHeight;
     else messageList.scrollTop = oldTop;
     // Lazy thumbnails may change height later. Do not jump while user reads older messages.
