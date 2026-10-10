@@ -1191,6 +1191,74 @@ app.post('/api/chats/:userId/settings', authMiddleware, async (req, res) => {
     } catch { res.status(500).json({ error: 'Не удалось сохранить настройки чата.' }); }
 });
 
+
+// v8.5.5: bounded 2 MiB chunk uploads. All file types are accepted.
+// On managed PostgreSQL this consumes database storage: monitor your plan's disk limit.
+const MAX_CHAT_FILE_BYTES = 250 * 1024 * 1024;
+const CHAT_FILE_CHUNK = 2 * 1024 * 1024;
+const safeUploadMime = value => /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(String(value || ''))
+    ? String(value) : 'application/octet-stream';
+const safeUploadName = value => clean(String(value || 'file').replace(/[\\/\r\n\0]/g,'_'), 180) || 'file';
+app.post('/api/upload-chunks/init', authMiddleware, async (req, res) => {
+    try {
+        const size = Number(req.body?.size);
+        const chunks = Math.ceil(size / CHAT_FILE_CHUNK);
+        if (!Number.isSafeInteger(size) || size < 1 || size > MAX_CHAT_FILE_BYTES)
+            return res.status(413).json({error:'Максимальный размер одного файла — 250 МБ.'});
+        const active = await pool.query('SELECT COUNT(*)::int AS count FROM upload_sessions WHERE owner_id=$1 AND expires_at>NOW()', [req.userId]);
+        if (active.rows[0].count >= 3) return res.status(429).json({error:'Сначала заверши предыдущие загрузки (не более трёх одновременно).'});
+        const uploadId = id();
+        await pool.query(`INSERT INTO upload_sessions(id,owner_id,filename,mime_type,total_size,total_chunks)
+            VALUES ($1,$2,$3,$4,$5,$6)`, [uploadId, req.userId, safeUploadName(req.body?.name), safeUploadMime(req.body?.mime), size, chunks]);
+        res.status(201).json({uploadId,chunkSize:CHAT_FILE_CHUNK,chunks});
+    } catch(err) {console.error('Upload init:',err);res.status(500).json({error:'Не удалось начать отправку файла.'});}
+});
+app.put('/api/upload-chunks/:id/:index', authMiddleware,
+    express.raw({type:'application/octet-stream', limit:'2.1mb'}), async(req,res)=>{
+    try {
+        const index=Number(req.params.index), uploadId=String(req.params.id||'');
+        if(!Number.isSafeInteger(index)||index<0||!req.body||!Buffer.isBuffer(req.body))
+            return res.status(400).json({error:'Некорректный фрагмент файла.'});
+        const {rows}=await pool.query(`SELECT total_size,total_chunks FROM upload_sessions
+            WHERE id=$1 AND owner_id=$2 AND expires_at>NOW()`,[uploadId,req.userId]);
+        const job=rows[0];
+        if(!job) return res.status(404).json({error:'Загрузка не найдена или истекла.'});
+        if(index>=job.total_chunks) return res.status(400).json({error:'Недопустимый номер фрагмента.'});
+        const expected=Math.min(CHAT_FILE_CHUNK,Number(job.total_size)-index*CHAT_FILE_CHUNK);
+        if(req.body.length!==expected) return res.status(400).json({error:'Неправильный размер фрагмента.'});
+        await pool.query(`INSERT INTO attachment_chunks(attachment_id,chunk_index,data)
+            VALUES($1,$2,$3) ON CONFLICT(attachment_id,chunk_index)
+            DO UPDATE SET data=EXCLUDED.data`,[uploadId,index,req.body]);
+        res.json({ok:true,index});
+    }catch(err){console.error('Upload chunk:',err);res.status(500).json({error:'Ошибка сохранения фрагмента.'});}
+});
+app.post('/api/upload-chunks/:id/complete',authMiddleware,async(req,res)=>{
+    const client=await pool.connect();
+    try{
+        await client.query('BEGIN');
+        const {rows}=await client.query(`SELECT * FROM upload_sessions WHERE id=$1 AND owner_id=$2
+            AND expires_at>NOW() FOR UPDATE`,[req.params.id,req.userId]);
+        const job=rows[0];
+        if(!job){await client.query('ROLLBACK');return res.status(404).json({error:'Загрузка не найдена.'});}
+        const result=await client.query(`SELECT COUNT(*)::int AS n,
+            COALESCE(SUM(octet_length(data)),0)::bigint AS bytes
+            FROM attachment_chunks WHERE attachment_id=$1`,[job.id]);
+        if(result.rows[0].n!==job.total_chunks || Number(result.rows[0].bytes)!==Number(job.total_size)){
+            await client.query('ROLLBACK');return res.status(409).json({error:'Файл загрузился не полностью.'});
+        }
+        // Empty BYTEA preserves the existing schema's NOT NULL constraint.
+        // Actual bytes reside in attachment_chunks to avoid a 250 MB Node Buffer.
+        await client.query(`INSERT INTO attachments(id,owner_id,filename,mime_type,size,data)
+            VALUES($1,$2,$3,$4,$5,$6)`,[job.id,req.userId,job.filename,job.mime_type,job.total_size,Buffer.alloc(0)]);
+        await client.query('DELETE FROM upload_sessions WHERE id=$1',[job.id]);
+        await client.query('COMMIT');
+        res.json({attachment:{id:job.id,filename:job.filename,mime:job.mime_type,
+            size:Number(job.total_size),url:`/api/media/${job.id}`}});
+    }catch(err){await client.query('ROLLBACK').catch(()=>{});console.error('Upload complete:',err);
+        res.status(500).json({error:'Не удалось завершить загрузку.'});}
+    finally{client.release();}
+});
+
 /* ================================
    ATTACHMENTS
 ================================ */
@@ -1218,7 +1286,11 @@ app.get('/api/media/:id', async (req, res) => {
         const mediaUserId = decoded?.sub;
         if (!mediaUserId) return res.status(401).end();
         const { rows } = await pool.query(
-            `SELECT a.filename,a.mime_type,a.data FROM attachments a
+            `SELECT a.filename,a.mime_type,a.size,
+                EXISTS(SELECT 1 FROM attachment_chunks ch WHERE ch.attachment_id=a.id) AS chunked,
+                CASE WHEN EXISTS(SELECT 1 FROM attachment_chunks ch WHERE ch.attachment_id=a.id)
+                  THEN NULL ELSE a.data END AS data
+             FROM attachments a
              WHERE a.id=$1 AND (
                a.owner_id=$2 OR EXISTS(
                  SELECT 1 FROM messages m JOIN conversation_members cm ON cm.conversation_id=m.conversation_id
@@ -1228,12 +1300,46 @@ app.get('/api/media/:id', async (req, res) => {
             [req.params.id, mediaUserId]
         );
         if (!rows[0]) return res.status(404).end();
-        res.set('Content-Type', safeMediaMime(rows[0].mime_type));
+        const contentType = safeMediaMime(rows[0].mime_type);
+        res.set('Content-Type', contentType);
         res.set('X-Content-Type-Options', 'nosniff');
+        res.set('Content-Security-Policy', 'sandbox');
         // Safe ASCII-only header: Unicode filename remains in attachment JSON metadata.
         // Avoid Node/Electron ByteString errors for files named e.g. "изображение.png".
-        res.set('Content-Disposition', 'inline');
-        res.send(rows[0].data);
+        // Unknown file types must download, never execute HTML/SVG from our own origin.
+        const safeInline = /^(image\/(png|jpeg|gif|webp|avif)|video\/(mp4|webm|ogg)|audio\/(mpeg|mp4|ogg|wav|webm)|application\/pdf)$/i.test(contentType);
+        res.set('Content-Disposition', req.query.download === '1' || !safeInline ? 'attachment' : 'inline');
+        const item=rows[0];
+        if(!item.chunked) return res.send(item.data);
+        const size=Number(item.size);
+        const range=req.headers.range;
+        let start=0,end=size-1;
+        if(range){
+            const m=/^bytes=(\d+)-(\d*)$/.exec(String(range));
+            if(!m){res.set('Content-Range',`bytes */${size}`);return res.status(416).end();}
+            start=Number(m[1]); end=m[2]?Number(m[2]):size-1;
+            if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>end||start>=size){
+                res.set('Content-Range',`bytes */${size}`);return res.status(416).end();}
+            end=Math.min(end,size-1);
+            res.status(206).set('Content-Range',`bytes ${start}-${end}/${size}`);
+        }
+        res.set('Accept-Ranges','bytes');
+        res.set('Content-Length',String(end-start+1));
+        res.flushHeaders();
+        const first=Math.floor(start/CHAT_FILE_CHUNK),last=Math.floor(end/CHAT_FILE_CHUNK);
+        for(let part=first;part<=last;part++){
+            if(res.destroyed) break;
+            const chunk=await pool.query(`SELECT data FROM attachment_chunks
+                WHERE attachment_id=$1 AND chunk_index=$2`,[req.params.id,part]);
+            if(!chunk.rows[0]){res.destroy();return;}
+            const bytes=chunk.rows[0].data;
+            const lo=part===first?start-part*CHAT_FILE_CHUNK:0;
+            const hi=part===last?end-part*CHAT_FILE_CHUNK+1:bytes.length;
+            if(!res.write(bytes.subarray(lo,hi))){
+                await new Promise(resolve=>{res.once('drain',resolve);res.once('close',resolve);});
+            }
+        }
+        if(!res.destroyed) res.end();
     } catch { res.status(500).end(); }
 });
 
@@ -1658,6 +1764,17 @@ async function init() {
     await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_message_id TEXT').catch(() => {});
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS messages_sender_client_message_id_idx
         ON messages(sender_id,client_message_id) WHERE client_message_id IS NOT NULL`).catch(() => {});
+    await pool.query(`CREATE TABLE IF NOT EXISTS upload_sessions (
+        id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        filename TEXT NOT NULL,mime_type TEXT NOT NULL,total_size BIGINT NOT NULL,
+        total_chunks INTEGER NOT NULL,expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW()+INTERVAL '24 hours')`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS attachment_chunks (
+        attachment_id TEXT NOT NULL,chunk_index INTEGER NOT NULL,data BYTEA NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(attachment_id,chunk_index))`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS attachment_chunks_created_idx ON attachment_chunks(created_at)`);
+    await pool.query(`DELETE FROM attachment_chunks c WHERE c.created_at<NOW()-INTERVAL '48 hours'
+      AND NOT EXISTS(SELECT 1 FROM attachments a WHERE a.id=c.attachment_id)`);
+    await pool.query(`DELETE FROM upload_sessions WHERE expires_at<NOW()`);
     // Admin table is deliberately initialized only after users exists.
     await ownerAdmin.init();
     server.listen(PORT, '0.0.0.0', () => {

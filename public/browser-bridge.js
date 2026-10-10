@@ -61,7 +61,40 @@
       return { ok:true,status:200, mimeType:blob.type||'application/octet-stream', base64:dataUrl.slice(comma+1) };
     } catch (error) { return { ok:false,status:0,error:error.message || 'Ошибка чтения медиа.' }; }
   }
-  window.burmalDesktop = Object.freeze({ apiRequest, apiUpload, mediaRequest, openExternal: async url => {
+
+async function chunkRequest(args) {
+  try {
+    const url=makeUrl(args.path);
+    if(!/^\/api\/upload-chunks\/[0-9a-f-]+\/\d+$/.test(String(args.path))) throw new Error('Недопустимый путь части.');
+    const response=await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${String(args.token)}`,
+      'Content-Type':'application/octet-stream'},body:args.data});
+    return {ok:response.ok,status:response.status,data:await parseJson(response)};
+  }catch(err){return {ok:false,status:0,data:{error:err.message}};}
+}
+async function saveMedia(args) {
+  const path=String(args.path || '');
+  if(!/^\/api\/media\/[A-Za-z0-9_-]+$/.test(path)) throw new Error('Неверный файл.');
+  const filename=String(args.filename||'file').replace(/[\\/:*?"<>|]/g,'_');
+  if (window.BurmalAndroidFiles && typeof window.BurmalAndroidFiles.saveAttachment === 'function') {
+    window.BurmalAndroidFiles.saveAttachment(path.slice('/api/media/'.length),String(args.token),filename);
+    return {ok:true};
+  }
+  // File picker must be opened during the click, before an awaited network fetch.
+  const handle=window.showSaveFilePicker ? await window.showSaveFilePicker({suggestedName:filename}) : null;
+  const response=await fetch(makeUrl(path),{headers:{Authorization:`Bearer ${String(args.token)}`}});
+  if(!response.ok) throw new Error(`Не удалось скачать файл (HTTP ${response.status}).`);
+  if(handle && response.body) {
+    const writable=await handle.createWritable();
+    try {await response.body.pipeTo(writable);} catch(err){await writable.abort().catch(()=>{});throw err;}
+  } else {
+    const blob=await response.blob();
+    const url=URL.createObjectURL(blob);
+    try {const a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();}
+    finally{setTimeout(()=>URL.revokeObjectURL(url),60000);}
+  }
+  return {ok:true};
+}
+window.burmalDesktop = Object.freeze({ apiRequest, apiUpload, chunkRequest, saveMedia, mediaRequest, openExternal: async url => {
     try { const value = new URL(url); if(value.protocol !== 'https:') return false; window.open(value.href, '_blank', 'noopener,noreferrer'); return true; }
     catch { return false; }
   }, platform:'web' });

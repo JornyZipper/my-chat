@@ -80,12 +80,35 @@
       let message = data.error || `Ошибка запроса (HTTP ${result.status}).`;
       if (data.details) message += ` Ответ сервера: ${String(data.details).slice(0, 170)}`;
       if (result.status === 0) message = data.error || 'Не удалось подключиться. Проверь адрес сервера и интернет.';
-      throw new Error(message);
+      const err = new Error(message);
+      err.httpStatus = result.status;
+      throw err;
     }
     return result.data || {};
   }
 
   async function uploadFile(path, fieldName, file) {
+    if (path === '/api/upload' && file.size > 10 * 1024 * 1024) {
+      if (file.size > 250 * 1024 * 1024) throw new Error('Максимум 250 МБ на файл.');
+      const start = await api('/api/upload-chunks/init', 'POST', {
+        name: file.name, mime: file.type || 'application/octet-stream', size: file.size
+      });
+      const size = Number(start.chunkSize || 2 * 1024 * 1024);
+      for (let i = 0; i < start.chunks; i++) {
+        const piece = await file.slice(i * size, Math.min((i + 1) * size, file.size)).arrayBuffer();
+        let success = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const result = await window.burmalDesktop.chunkRequest({
+            baseUrl: state.baseUrl, path: `/api/upload-chunks/${start.uploadId}/${i}`,
+            token: state.token, data: piece
+          });
+          if (result.ok) { success = true; break; }
+          if (attempt === 2) throw new Error(result.data?.error || `Ошибка загрузки части ${i + 1}.`);
+        }
+        showToast(`Загрузка ${file.name}: ${Math.round((i + 1) / start.chunks * 100)}%`);
+      }
+      return await api(`/api/upload-chunks/${start.uploadId}/complete`, 'POST', {});
+    }
     const data = await file.arrayBuffer();
     const result = await window.burmalDesktop.apiUpload({
       baseUrl: state.baseUrl,
@@ -220,6 +243,20 @@
     loading.className = isImage || isVideo ? 'media-preview-loading' : 'file-attachment-card';
     loading.textContent = isImage ? 'Загрузка изображения…' : isVideo ? 'Загрузка видео…' : `${isAudio ? '♫' : '↧'}  ${filename}${attachment.size ? ` · ${readableFileSize(attachment.size)}` : ''}`;
     wrapper.append(loading);
+    if (Number(attachment.size || 0) > 16 * 1024 * 1024) {
+      loading.className = 'file-attachment-card';
+      loading.textContent = `↓  ${filename} · ${readableFileSize(attachment.size)} (скачать)`;
+      loading.addEventListener('click', async () => {
+        try {
+          const result = await window.burmalDesktop.saveMedia({
+            baseUrl: state.baseUrl, path: `/api/media/${encodeURIComponent(attachment.id)}`,
+            token: state.token, filename
+          });
+          if (result?.ok === false) throw new Error(result.error || 'Не удалось сохранить файл.');
+        } catch(error) { showToast(error.message, 'error'); }
+      });
+      return wrapper;
+    }
     loadAttachmentDataUrl(attachment).then((url) => {
       if (!wrapper.isConnected) return;
       if (isImage) {
@@ -307,7 +344,7 @@
     const chosen=Array.from(files||[]);
     if(!chosen.length)return;
     if(chosen.length>10){showToast('Можно отправить до 10 файлов за раз.','error');return;}
-    if(chosen.some(f=>f.size>15*1024*1024)){showToast('Один файл может быть не больше 15 МБ.','error');return;}
+    if(chosen.some(f=>f.size>250*1024*1024)){showToast('Один файл может быть не больше 250 МБ.','error');return;}
     state.pendingFiles=chosen;state.pendingAttachment=chosen[0];
     $('attachment-pending').classList.add('hidden');drawMediaPreviews();sendButton.disabled=false;
   }
@@ -1235,6 +1272,7 @@
       $('other-profile-title').textContent = viewedProfile.displayName || viewedProfile.username || 'Пользователь';
       $('other-profile-username').textContent = `@${viewedProfile.username || ''}`;
       $('other-profile-verified').classList.toggle('hidden', !viewedProfile.verified);
+      $('other-profile-verified').classList.toggle('v8-owner-badge', Boolean(viewedProfile.ownerBadge));
       $('other-profile-bio').textContent = viewedProfile.bio || 'Описание не указано';
       $('other-profile-phone-row').classList.toggle('hidden', !viewedProfile.phone);
       $('other-profile-phone').textContent = viewedProfile.officialNumber || viewedProfile.phone || '';
@@ -1465,8 +1503,18 @@
       if (state.profile) state.usersById.set(state.profile.id, state.profile);
       if (!state.profile) throw new Error('Профиль не найден.');
       rememberAccount(); showApp(); updateAdminAvailability(); connectSocket(); await loadChats(); if (!state.chats.length && isOwner()) await switchDirectory('people');
-    } catch {
-      forgetCurrentAccount(); resetSession();
+    } catch (error) {
+      if (error?.httpStatus === 401 || error?.httpStatus === 403) {
+        forgetCurrentAccount(); resetSession();
+      } else {
+        // A sleeping Render instance, timeout, lost network, or server 5xx
+        // must never erase a valid saved login from localStorage.
+        console.warn('Session will be retried without logout:', error);
+        showToast('Сервер временно недоступен. Вход сохранён, переподключаемся…', 'error');
+        if (state.token && !state.profile) {
+          window.setTimeout(() => { if (state.token && !state.profile) restoreSession(); }, 6500);
+        }
+      }
     }
   }
 

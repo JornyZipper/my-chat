@@ -12,11 +12,16 @@
   let busy = false;
   const labelMap = {pending:'Ожидает решения владельца @Z1pperJ',approved:'Одобрено — возьми код из чата поддержки',active:'Номер привязан',rejected:'Заявка отклонена',cancelled:'Заявка отменена'};
   const message = (text,failed=false)=>{status.textContent=text;status.style.color=failed?'#ffa8a8':'';};
+  // On Electron the page is loaded via file://; location.origin is not a server URL.
+  // On the website/Android use the live origin so self-hosted deployments still work.
+  const API_BASE_URL = (location.protocol === 'https:' || location.protocol === 'http:')
+    ? location.origin
+    : 'https://my-chat-ucw4.onrender.com';
   async function api(path,method='GET',body=null) {
     const token=localStorage.getItem('burmal.token');
     if(!token)throw new Error('Сначала войди в аккаунт.');
     const result=await window.burmalDesktop.apiRequest({
-      baseUrl:location.origin,path,method,body,token
+      baseUrl:API_BASE_URL,path,method,body,token
     });
     if(!result.ok)throw new Error(result.data?.error||`Ошибка сервера (${result.status})`);
     return result.data||{};

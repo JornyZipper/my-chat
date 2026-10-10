@@ -1,0 +1,37 @@
+
+/* Owner verified badge: same visible size as the normal blue check mark. */
+.verified.v8-owner-badge {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #0b1017 !important;
+  color: #fff !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}
+/* Footer blue verified badge is 12x12, so owner is 12x12 there as well. */
+.me-details .verified.v8-owner-badge {
+  width: 12px !important; height: 12px !important;
+  min-width: 12px !important; min-height: 12px !important;
+  max-width: 12px !important; max-height: 12px !important;
+  font-size: 8px !important;
+}
+/* Large mobile-profile badge is 21x21 for both blue and black. */
+.bp4-verified.v8-owner-badge {
+  width: 21px !important; height: 21px !important;
+  min-width: 21px !important; min-height: 21px !important;
+  max-width: 21px !important; max-height: 21px !important;
+  font-size: 12px !important;
+  background: #0b1017 !important;
+}
