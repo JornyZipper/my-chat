@@ -1,0 +1,42 @@
+/* Standalone full-screen mobile profile, inspired by modern messenger layouts. */
+.bp4-page[hidden], .bp4-verified[hidden] { display:none!important; }
+.bp4-page { display:none; }
+@media(max-width:700px) {
+  .bp4-page:not([hidden]) {
+    position:fixed; inset:0; z-index:3200; display:flex; flex-direction:column;
+    width:100%; height:100dvh; min-height:0; overflow:hidden;
+    background:#111315; color:#f6f7f9; font-family:system-ui,-apple-system,"Roboto",sans-serif;
+    padding:0; box-sizing:border-box;
+  }
+  .bp4-page * { box-sizing:border-box; }
+  .bp4-header { flex:none; height:64px; display:flex; align-items:center; gap:16px; padding:0 15px; background:#17191c; }
+  .bp4-header strong { font-size:20px; letter-spacing:-.3px; flex:1; }
+  .bp4-round { width:42px; height:42px; border:0; color:#f6f7f9; background:transparent; border-radius:50%; display:grid;place-items:center; font-size:32px; cursor:pointer; }
+  .bp4-round:active { background:#323538; }
+  .bp4-scroll { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding-bottom:25px; }
+  .bp4-hero { display:flex; align-items:center; flex-direction:column; background:linear-gradient(180deg,#1c1e22,#16181b); padding:28px 14px 24px; }
+  .bp4-avatar { overflow:hidden; width:132px; height:132px; display:flex; align-items:center; justify-content:center; flex:none; border-radius:50%; background:#2389d7; color:#fff; font-size:54px; font-weight:600; box-shadow:0 5px 30px rgba(0,0,0,.25); }
+  .bp4-avatar img { width:100%;height:100%;object-fit:cover;display:block; }
+  .bp4-name-line { display:flex; align-items:center; justify-content:center;gap:7px; padding:17px 8px 1px; min-width:0; max-width:100%; }
+  .bp4-name-line h1 { max-width:100%;margin:0;color:#f8f8fa;font-weight:700;font-size:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .bp4-verified { flex:none; background:#329df8; font-size:12px; height:21px; width:21px; border-radius:50%; color:#fff;display:grid;place-items:center;font-weight:900; }
+  .bp4-status { margin:4px 0 0;color:#76bdff;font-size:14px; }
+  .bp4-actions { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:14px 14px 22px;background:#111315; }
+  .bp4-actions button { min-height:78px;border:none;border-radius:17px;background:#242629;color:#f5f6f7;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;touch-action:manipulation; }
+  .bp4-actions button:active { background:#36393d; }
+  .bp4-action-icon {font-size:26px;line-height:1;}
+  .bp4-section-title {padding:1px 20px 11px;margin:0;color:#858e97;text-transform:uppercase;letter-spacing:1.1px;font-size:11px;font-weight:800;}
+  .bp4-info {background:#202225;border-radius:20px;margin:0 14px;overflow:hidden;padding:0 16px;}
+  .bp4-info-row {display:flex;align-items:center;gap:14px;min-height:76px;padding:13px 3px;}
+  .bp4-info-row + .bp4-info-row {border-top:1px solid rgba(255,255,255,.08);}
+  .bp4-info-icon {display:flex;width:27px;flex:none;justify-content:center;color:#8c959f;font-size:24px;}
+  .bp4-info-row > div {min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .bp4-info-row strong {font-size:15px;color:#edf1f5;line-height:1.35;overflow-wrap:anywhere;}
+  .bp4-info-row small {color:#8c959f;font-size:12px;}
+  .bp4-note {color:#7f8993;font-size:12px;line-height:1.6;margin:20px 20px 15px;}
+  .bp4-nav {flex:none; display:grid;grid-template-columns:repeat(3,1fr);background:#1d1e20;border-top:1px solid #2c2d2f;padding:7px 10px max(8px,env(safe-area-inset-bottom));}
+  .bp4-nav button {height:57px;border:0;background:transparent;border-radius:14px;color:#a9afb7;font-size:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;}
+  .bp4-nav button span {font-size:23px;line-height:1;}
+  .bp4-nav button.bp4-selected {color:#62b6ff;background:#243345;font-weight:700;}
+  @media(max-height:680px) { .bp4-hero {padding:12px 10px 13px;} .bp4-avatar{width:96px;height:96px;font-size:39px;} .bp4-actions{padding-bottom:13px;} }
+}

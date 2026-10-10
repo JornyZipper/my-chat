@@ -54,25 +54,50 @@
     const ws = window.myChatSocket;
     return Boolean(ws && ws.readyState === WebSocket.OPEN);
   }
+  let turnAvailable = false;
   async function getIceServers() {
+    let iceServers = [];
     try {
       if (window.myChatGetRtcConfig) {
         const data = await window.myChatGetRtcConfig();
-        if (Array.isArray(data?.iceServers) && data.iceServers.length) return [...data.iceServers, {urls:['stun:stun.cloudflare.com:3478']}];
+        if (Array.isArray(data?.iceServers)) iceServers = data.iceServers;
       } else {
-        const token = localStorage.getItem('mychat_token') || '';
+        const token = localStorage.getItem('burmal.token') || '';
         const response = await fetch('/api/rtc-config', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (response.ok) {
           const data = await response.json();
-          if (Array.isArray(data.iceServers) && data.iceServers.length) return data.iceServers;
+          if (Array.isArray(data.iceServers)) iceServers = data.iceServers;
         }
       }
-    } catch (error) {
-      console.warn('RTC config could not be loaded; using STUN fallback.', error);
+    } catch (error) { console.warn('RTC config unavailable:', error.message); }
+    // Independent STUN provider helps when one STUN hostname is blocked or fails DNS.
+    const flattened = iceServers.flatMap(server => Array.isArray(server.urls) ? server.urls : [server.urls]);
+    if (!flattened.some(url => String(url).includes('stun.l.google.com'))) {
+      iceServers = [...iceServers, { urls: 'stun:stun.l.google.com:19302' }];
     }
-    return [
-      { urls: ['stun:stun.cloudflare.com:3478'] }
-    ];
+    turnAvailable = iceServers.some(server => {
+      const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+      return urls.some(url => /^turns?:/i.test(String(url || ''))) && Boolean(server.username && server.credential);
+    });
+    if (!turnAvailable) console.warn('TURN is NOT configured on /api/rtc-config; calls between mobile networks may fail.');
+    return iceServers;
+  }
+  function networkHelp() {
+    return turnAvailable
+      ? 'Соединение между сетями не установлено. Проверь TURN-сервер, доступность его портов и интернет у обоих участников.'
+      : 'Соединение между сетями не установлено. Администратору нужно настроить TURN в Render (RTC_TURN_URLS, RTC_TURN_USERNAME, RTC_TURN_CREDENTIAL).';
+  }
+  function startConnectionDeadline(callId) {
+    clearTimeout(timeoutHandle);
+    timeoutHandle = setTimeout(() => {
+      if (!currentCall || currentCall.callId !== callId || peer?.connectionState === 'connected') return;
+      if (currentCall.outgoing && !currentCall.answered) {
+        toast('Нет ответа от собеседника.');
+      } else {
+        toast(networkHelp());
+      }
+      cleanup(true);
+    }, 35000);
   }
   function setAvatar(element, user) {
     if (!element) return;
@@ -169,6 +194,19 @@
       try { new Notification(incomingCall.from.displayName || 'Входящий звонок', { body: call.video ? 'Видеозвонок' : 'Голосовой звонок' }); } catch {}
     }
   }
+  function isCameraAccessError(error) {
+    return ['NotReadableError', 'TrackStartError', 'AbortError', 'NotFoundError', 'OverconstrainedError', 'NotAllowedError', 'SecurityError'].includes(error?.name);
+  }
+  function cameraErrorMessage(error) {
+    if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+      return 'Нет доступа к камере. Проверь разрешения Windows и приложения.';
+    }
+    if (error?.name === 'NotFoundError') return 'Камера не найдена. Проверь, подключена ли она.';
+    if (error?.name === 'NotReadableError' || error?.name === 'TrackStartError' || error?.name === 'AbortError') {
+      return 'Камера сейчас недоступна. Закрой другие программы с камерой и проверь её в приложении «Камера» Windows.';
+    }
+    return error?.message || 'Не удалось включить камеру.';
+  }
   async function localMedia(video) {
     if (!window.isSecureContext && !['localhost', '127.0.0.1'].includes(location.hostname)) {
       throw new Error('Для звонков на телефоне открой сайт по HTTPS.');
@@ -176,38 +214,63 @@
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error('Браузер не даёт доступ к микрофону. Открой сайт в Safari/Chrome по HTTPS.');
     }
-    return navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: video ? { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } } : false
-    });
+    const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+    if (!video) return navigator.mediaDevices.getUserMedia({ audio, video: false });
+    try {
+      // Request moderate settings first: 720p/30 can over-stress some Windows webcam drivers.
+      return await navigator.mediaDevices.getUserMedia({
+        audio,
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 }, facingMode: 'user' }
+      });
+    } catch (error) {
+      // Some devices fail with a constraint set, but work with the default camera format.
+      if (!['OverconstrainedError', 'NotReadableError', 'TrackStartError', 'AbortError'].includes(error?.name)) throw error;
+      try { return await navigator.mediaDevices.getUserMedia({ audio, video: true }); }
+      catch (retryError) { throw retryError; }
+    }
   }
   async function makePeer(video, remoteUser, token) {
     const pc = new RTCPeerConnection({ iceServers: await getIceServers(), bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' });
     peer = pc;
+    const remoteStream = new MediaStream();
     pc.onicecandidate = (event) => {
       if (event.candidate) sendSignal({ type: 'call_ice', callId: token, toUserId: remoteUser.id, candidate: event.candidate });
     };
     pc.ontrack = async (event) => {
-      const stream = event.streams?.[0] || new MediaStream([event.track]);
-      if (ui.remoteAudio) {
-        ui.remoteAudio.srcObject = stream; ui.remoteAudio.autoplay = true; ui.remoteAudio.playsInline = true; ui.remoteAudio.muted = false; ui.remoteAudio.volume = 1;
+      if (peer !== pc) return;
+      const tracks = event.streams?.[0]?.getTracks?.() || [event.track];
+      for (const track of tracks) {
+        if (!remoteStream.getTracks().some((other) => other.id === track.id)) remoteStream.addTrack(track);
+      }
+      if (ui.remoteAudio && remoteStream.getAudioTracks().length) {
+        ui.remoteAudio.srcObject = remoteStream;
+        ui.remoteAudio.autoplay = true; ui.remoteAudio.playsInline = true;
+        ui.remoteAudio.muted = false; ui.remoteAudio.volume = 1;
         try { await ui.remoteAudio.play(); $('enableCallAudioButton')?.classList.add('hidden'); }
         catch { ensureEnableAudioButton(); }
       }
-      if (video && ui.remoteVideo) {
-        ui.remoteVideo.srcObject = stream; ui.remoteVideo.autoplay = true; ui.remoteVideo.playsInline = true;
+      if (video && ui.remoteVideo && remoteStream.getVideoTracks().length) {
+        ui.remoteVideo.srcObject = remoteStream;
+        ui.remoteVideo.autoplay = true; ui.remoteVideo.playsInline = true;
+        ui.remoteVideo.muted = true; // Only the audio element plays sound: avoids echo/double audio.
         ui.remoteVideo.setAttribute('playsinline', ''); ui.remoteVideo.classList.remove('hidden'); ui.remoteFallback?.classList.add('hidden');
         try { await ui.remoteVideo.play(); } catch { ensureEnableAudioButton(); }
       }
     };
+    pc.onicecandidateerror = (event) => { console.warn('ICE candidate error', event.errorCode, event.errorText || ''); };
+    pc.oniceconnectionstatechange = () => {
+      if (pc !== peer || !currentCall) return;
+      if (pc.iceConnectionState === 'checking' && !callStartedAt) updateTimer('Соединяем сети…');
+      if (pc.iceConnectionState === 'failed') showError(networkHelp());
+    };
     pc.onconnectionstatechange = () => {
       if (pc !== peer) return;
-      if (pc.connectionState === 'connected') { clearTimeout(disconnectHandle); disconnectHandle = null; clearTimeout(timeoutHandle); timeoutHandle = null; startTimer(); }
+      if (pc.connectionState === 'connected') { clearTimeout(disconnectHandle); disconnectHandle = null; clearTimeout(timeoutHandle); timeoutHandle = null; if (!callStartedAt) startTimer(); }
       if (pc.connectionState === 'disconnected') {
         clearTimeout(disconnectHandle);
         disconnectHandle = setTimeout(() => { if (peer === pc && currentCall) { showError('Соединение потеряно.'); cleanup(false); } }, 12000);
       }
-      if (pc.connectionState === 'failed') { showError('Связь не установлена. Для некоторых мобильных сетей нужен TURN-сервер.'); setTimeout(() => cleanup(false), 2200); }
+      if (pc.connectionState === 'failed') { showError(networkHelp()); setTimeout(() => { if (peer === pc) cleanup(true); }, 3500); }
     };
     return pc;
   }
@@ -237,12 +300,15 @@
     const token = createCallId();
     currentCall = { callId: token, remoteUser: user, video, outgoing: true };
     showActive(user, video, 'Вызов…');
-    timeoutHandle = setTimeout(() => {
-      if (currentCall?.callId === token) { toast('Пользователь не ответил.'); cleanup(true); }
-    }, 45000);
+    startConnectionDeadline(token);
     try {
       // getUserMedia is deliberately called directly from the tap/click path for mobile browsers.
-      localStream = await localMedia(video);
+      const acquiredStream = await localMedia(video);
+      if (currentCall?.callId !== token) {
+        acquiredStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      localStream = acquiredStream;
       const pc = await makePeer(video, user, token);
       for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
       if (video && ui.localVideo) {
@@ -254,7 +320,17 @@
       sendSignal({ type: 'call_offer', callId: token, toUserId: user.id, video, offer: pc.localDescription });
     } catch (error) {
       console.error('Start call failed:', error);
-      showError(error?.name === 'NotAllowedError' ? 'Разреши доступ к микрофону/камере в настройках браузера.' : error?.name === 'NotFoundError' ? 'На устройстве не найден микрофон или камера.' : error?.message || 'Не удалось начать звонок.');
+      if (video && isCameraAccessError(error) && currentCall?.callId === token) {
+        const message = cameraErrorMessage(error);
+        cleanup(false);
+        if (window.confirm(`${message}\n\nПозвонить без камеры (голосом)?`)) {
+          await startCall(false);
+        } else {
+          toast(message);
+        }
+        return;
+      }
+      showError(error?.name === 'NotAllowedError' ? 'Разреши доступ к микрофону в настройках Windows или браузера.' : error?.name === 'NotFoundError' ? 'Не найден микрофон.' : error?.message || 'Не удалось начать звонок.');
       setTimeout(() => cleanup(false), 1800);
     }
   }
@@ -263,13 +339,32 @@
     const call = incomingCall;
     incomingCall = null;
     currentCall = { callId: call.callId, remoteUser: call.from, video: Boolean(call.video), outgoing: false };
-    showActive(call.from, Boolean(call.video), 'Подключение…');
+    showActive(call.from, Boolean(call.video), 'Соединяем сети…');
+    startConnectionDeadline(call.callId);
     try {
       // User tapped Answer, so the microphone/camera request is tied to a user gesture.
-      localStream = await localMedia(Boolean(call.video));
+      let noCamera = false;
+      try {
+        localStream = await localMedia(Boolean(call.video));
+      } catch (error) {
+        if (!call.video || !isCameraAccessError(error)) throw error;
+        const message = cameraErrorMessage(error);
+        if (!window.confirm(`${message}\n\nОтветить на видеозвонок без своей камеры?`)) throw error;
+        localStream = await localMedia(false);
+        noCamera = true;
+      }
+      if (currentCall?.callId !== call.callId) {
+        localStream?.getTracks().forEach((track) => track.stop());
+        localStream = null;
+        return;
+      }
       const pc = await makePeer(Boolean(call.video), call.from, call.callId);
+      if (noCamera) {
+        ui.camera?.classList.add('hidden');
+        toast('Отвечаем без камеры. Видео собеседника по-прежнему доступно.');
+      }
       for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
-      if (call.video && ui.localVideo) {
+      if (call.video && localStream.getVideoTracks().length && ui.localVideo) {
         ui.localVideo.srcObject = localStream; ui.localVideo.muted = true; ui.localVideo.autoplay = true; ui.localVideo.playsInline = true;
         ui.localVideo.setAttribute('playsinline', ''); ui.localVideo.classList.remove('hidden'); ui.localVideo.play().catch(() => {});
       }
@@ -300,7 +395,7 @@
         showIncoming(data); return;
       case 'call_answer':
         if (!currentCall || !peer || data.callId !== currentCall.callId) return;
-        try { await peer.setRemoteDescription(new RTCSessionDescription(data.answer)); await flushIce(data.callId); }
+        try { currentCall.answered = true; updateTimer('Соединяем сети…'); await peer.setRemoteDescription(new RTCSessionDescription(data.answer)); await flushIce(data.callId); }
         catch (error) { showError('Не удалось установить ответ звонка.'); console.error(error); }
         return;
       case 'call_ice': {
