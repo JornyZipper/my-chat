@@ -102,7 +102,9 @@ function publicProfile(row, viewerId = null) {
         privacyOnline: row.privacy_online || 'everyone',
         avatarUrl: row.avatar_data ? `/api/avatar/${row.id}` : '',
         avatarColor: row.avatar_color || '#3390ec',
-        createdAt: row.created_at
+        createdAt: row.created_at,
+        phone: row.phone_verified && (viewerId === row.id || row.phone_visible) ? (row.phone_e164 || '') : '',
+        ...(viewerId === row.id ? { phoneVisible: Boolean(row.phone_visible), phoneVerified: Boolean(row.phone_verified) } : {})
     };
 }
 function pushPayloadForMessage(message, sender) {
@@ -151,7 +153,7 @@ async function blockedBetween(a, b) {
 async function getUser(idValue) {
     const { rows } = await pool.query(
         `SELECT id,username,username_norm,display_name,password_hash,email,email_verified,
-                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at
+                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified
          FROM users WHERE id=$1`,
         [idValue]
     );
@@ -160,7 +162,7 @@ async function getUser(idValue) {
 async function getUserByUsername(username) {
     const { rows } = await pool.query(
         `SELECT id,username,username_norm,display_name,password_hash,email,email_verified,
-                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at
+                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified
          FROM users WHERE username_norm=$1`,
         [norm(username)]
     );
@@ -205,11 +207,21 @@ async function ensureDirectConversation(a, b) {
 async function broadcastPresence() {
     const { rows } = await pool.query(
         `SELECT id,username,display_name,avatar_data,bio,presence_status,
-                privacy_online,verified_badge,created_at
+                privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified
          FROM users ORDER BY username_norm`
     );
-    const list = rows.map(row => publicProfile(row));
-    for (const userId of onlineSockets.keys()) sendToUser(userId, { type: 'users', users: list });
+    for (const userId of onlineSockets.keys()) {
+        const owner = rows.some(r => r.id === userId && norm(r.username) === VERIFIED_USERNAME);
+        let allowed = null;
+        if (!owner) {
+            const contacts = await pool.query(`SELECT DISTINCT other.user_id FROM conversation_members mine
+                JOIN conversation_members other ON other.conversation_id=mine.conversation_id
+                WHERE mine.user_id=$1 AND other.user_id<>$1`, [userId]);
+            allowed = new Set(contacts.rows.map(r => r.user_id));
+        }
+        const visible = owner ? rows : rows.filter(r => allowed.has(r.id));
+        sendToUser(userId, { type: 'users', users: visible.map(r => publicProfile(r, userId)) });
+    }
 }
 async function broadcastChatRefresh(userIds) {
     for (const userId of new Set(userIds)) sendToUser(userId, { type: 'chat_refresh' });
@@ -441,6 +453,9 @@ CREATE TABLE IF NOT EXISTS users (
   presence_status TEXT NOT NULL DEFAULT 'online',
   privacy_online TEXT NOT NULL DEFAULT 'everyone',
   verified_badge BOOLEAN NOT NULL DEFAULT FALSE,
+  phone_e164 TEXT UNIQUE,
+  phone_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  phone_visible BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS users_username_norm_idx ON users(username_norm);
@@ -510,6 +525,11 @@ CREATE TABLE IF NOT EXISTS mail_tokens (
   type TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
   used BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE TABLE IF NOT EXISTS pending_phone_links (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  phone_e164 TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL
 );
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id TEXT PRIMARY KEY,
@@ -593,6 +613,114 @@ app.post('/api/auth/login', async (req, res) => {
         res.json({ token: issueToken(user.id), profile: publicProfile(user, user.id) });
     } catch (error) { console.error(error); res.status(500).json({ error: 'Ошибка входа.' }); }
 });
+/* ================================
+   PHONE AUTH: Twilio Verify, never send or store raw verification codes.
+   Legacy username/password login remains available.
+================================ */
+const PHONE_VERIFY_READY = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_VERIFY_SERVICE_SID);
+const smsLimits = new Map();
+function phoneValue(input) {
+    const value = String(input || '').replace(/[()\s-]/g, '');
+    return /^\+[1-9]\d{7,14}$/.test(value) ? value : null;
+}
+function limitPhoneRequest(req, phone, action, max = 5) {
+    const key = crypto.createHash('sha256').update([String(req.ip), phone, action].join(':')).digest('hex');
+    const now = Date.now();
+    if (smsLimits.size > 5000) for (const [k,v] of smsLimits) if (now > v.until) smsLimits.delete(k);
+    const prior = smsLimits.get(key);
+    const next = prior && prior.until > now ? prior : { count: 0, until: now + 15 * 60 * 1000 };
+    next.count++;
+    smsLimits.set(key, next);
+    return next.count <= max;
+}
+async function twilioVerify(endpoint, values) {
+    if (!PHONE_VERIFY_READY) throw Object.assign(new Error('SMS-вход пока не подключён администратором сервера.'), { status: 503 });
+    const account = process.env.TWILIO_ACCOUNT_SID;
+    const service = process.env.TWILIO_VERIFY_SERVICE_SID;
+    const url = `https://verify.twilio.com/v2/Services/${encodeURIComponent(service)}/${endpoint}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + Buffer.from(account + ':' + process.env.TWILIO_AUTH_TOKEN).toString('base64') },
+            body: new URLSearchParams(values).toString(), signal: controller.signal
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            console.warn('Twilio Verify response', response.status, body.code || '');
+            throw Object.assign(new Error('SMS не удалось отправить или проверить. Проверь номер и попробуй позже.'), { status: response.status === 429 ? 429 : 502 });
+        }
+        return body;
+    } finally { clearTimeout(timeout); }
+}
+function phoneErr(res, error) {
+    if (error && error.status === 503) return res.status(503).json({ error: error.message });
+    console.warn('SMS error:', error && error.message);
+    return res.status(error?.status === 429 ? 429 : 502).json({ error: 'Ошибка сервиса SMS. Попробуй позже.' });
+}
+app.post('/api/profile/phone/start', authMiddleware, async (req, res) => {
+    const phone = phoneValue(req.body.phone);
+    if (!phone) return res.status(400).json({ error: 'Введи номер в международном формате, например +380XXXXXXXXX.' });
+    if (!limitPhoneRequest(req, phone, 'link') || !limitPhoneRequest(req, 'all-phones', 'global-send', 12)) return res.status(429).json({ error: 'Слишком часто. Подожди 15 минут.' });
+    try {
+        const existing = await pool.query('SELECT id FROM users WHERE phone_e164=$1 AND phone_verified=TRUE AND id<>$2', [phone, req.userId]);
+        if (existing.rowCount) return res.status(409).json({ error: 'Номер уже привязан к другому аккаунту.' });
+        await twilioVerify('Verifications', { To: phone, Channel: 'sms' });
+        await pool.query(`INSERT INTO pending_phone_links(user_id,phone_e164,expires_at)
+            VALUES ($1,$2,NOW()+INTERVAL '10 minutes') ON CONFLICT(user_id)
+            DO UPDATE SET phone_e164=EXCLUDED.phone_e164,expires_at=EXCLUDED.expires_at`, [req.userId, phone]);
+        res.json({ ok: true, message: 'SMS-код отправлен.' });
+    } catch (error) { phoneErr(res, error); }
+});
+app.post('/api/profile/phone/confirm', authMiddleware, async (req, res) => {
+    const code = String(req.body.code || '').trim();
+    if (!/^\d{4,8}$/.test(code)) return res.status(400).json({ error: 'Введи код из SMS.' });
+    if (!limitPhoneRequest(req, req.userId, 'link-check', 10)) return res.status(429).json({ error: 'Слишком много попыток. Подожди.' });
+    try {
+        const pending = await pool.query('SELECT phone_e164 FROM pending_phone_links WHERE user_id=$1 AND expires_at>NOW()', [req.userId]);
+        if (!pending.rows[0]) return res.status(400).json({ error: 'Запрос кода истёк. Отправь код заново.' });
+        const phone = pending.rows[0].phone_e164;
+        const checked = await twilioVerify('VerificationCheck', { To: phone, Code: code });
+        if (checked.status !== 'approved') return res.status(400).json({ error: 'Неверный или истёкший SMS-код.' });
+        const changed = await pool.query(`UPDATE users SET phone_e164=$1,phone_verified=TRUE,phone_visible=FALSE
+              WHERE id=$2 AND NOT EXISTS(SELECT 1 FROM users WHERE phone_e164=$1 AND phone_verified=TRUE AND id<>$2)`, [phone, req.userId]);
+        if (!changed.rowCount) return res.status(409).json({ error: 'Номер уже занят.' });
+        await pool.query('DELETE FROM pending_phone_links WHERE user_id=$1', [req.userId]);
+        res.json({ ok: true, profile: publicProfile(await getUser(req.userId), req.userId) });
+    } catch (error) {
+        if (error.code === '23505') return res.status(409).json({ error: 'Номер уже занят.' });
+        phoneErr(res, error);
+    }
+});
+app.post('/api/auth/phone/start', async (req, res) => {
+    const phone = phoneValue(req.body.phone);
+    if (!phone) return res.status(400).json({ error: 'Введи международный номер с + и кодом страны.' });
+    if (!PHONE_VERIFY_READY) return res.status(503).json({ error: 'SMS-вход пока не настроен на сервере.' });
+    if (!limitPhoneRequest(req, phone, 'login') || !limitPhoneRequest(req, 'all-phones', 'global-send', 12)) return res.status(429).json({ error: 'Слишком часто. Подожди 15 минут.' });
+    try {
+        const found = await pool.query('SELECT id FROM users WHERE phone_e164=$1 AND phone_verified=TRUE', [phone]);
+        if (found.rowCount) await twilioVerify('Verifications', { To: phone, Channel: 'sms' });
+        // Same response regardless of whether the number belongs to an account.
+        res.json({ ok: true, message: 'Если номер привязан к аккаунту, SMS отправлено.' });
+    } catch (error) { phoneErr(res, error); }
+});
+app.post('/api/auth/phone/verify', async (req, res) => {
+    const phone = phoneValue(req.body.phone);
+    const code = String(req.body.code || '').trim();
+    if (!phone || !/^\d{4,8}$/.test(code)) return res.status(400).json({ error: 'Неверный номер или код.' });
+    if (!limitPhoneRequest(req, phone, 'login-check', 10)) return res.status(429).json({ error: 'Слишком много попыток.' });
+    try {
+        const found = await pool.query('SELECT id FROM users WHERE phone_e164=$1 AND phone_verified=TRUE', [phone]);
+        if (!found.rows[0]) return res.status(401).json({ error: 'Неверный или истёкший код.' });
+        const checked = await twilioVerify('VerificationCheck', { To: phone, Code: code });
+        if (checked.status !== 'approved') return res.status(401).json({ error: 'Неверный или истёкший код.' });
+        const user = await getUser(found.rows[0].id);
+        if (!user || (REQUIRE_EMAIL_VERIFICATION && !user.email_verified)) return res.status(403).json({ error: 'Аккаунт недоступен.' });
+        res.json({ token: issueToken(user.id), profile: publicProfile(user, user.id) });
+    } catch (error) { phoneErr(res, error); }
+});
+
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
     const user = await getUser(req.userId);
     if (!user) return res.status(404).json({ error: 'Профиль не найден.' });
@@ -676,8 +804,8 @@ app.patch('/api/profile', authMiddleware, async (req, res) => {
         // CRITICAL: never overwrite verified_badge when saving profile settings.
         await pool.query(
             `UPDATE users SET username=$1,username_norm=$2,display_name=$3,bio=$4,
-             presence_status=$5,privacy_online=$6,avatar_color=$7 WHERE id=$8`,
-            [username, norm(username), displayName, bio, presenceStatus, privacyOnline, avatarColor, req.userId]
+             presence_status=$5,privacy_online=$6,avatar_color=$7,phone_visible=$9 WHERE id=$8`,
+            [username, norm(username), displayName, bio, presenceStatus, privacyOnline, avatarColor, req.userId, Boolean(req.body.phoneVisible === undefined ? user.phone_visible : req.body.phoneVisible === true)]
         );
         const updated = await getUser(req.userId);
         res.json({ profile: publicProfile(updated, req.userId) });
@@ -715,12 +843,26 @@ app.get('/api/avatar/:userId', async (req, res) => {
 ================================ */
 app.get('/api/users', authMiddleware, async (req, res) => {
     try {
+        const current = await getUser(req.userId);
+        if (!current) return res.status(401).json({ error: 'Аккаунт не найден.' });
+        if (current.username_norm !== VERIFIED_USERNAME) {
+            // No directory access for ordinary users. Exact @username lookup still lets them start chats.
+            const exact = clean(req.query.q, 50);
+            if (!exact.startsWith('@') || !validUsername(exact.slice(1))) {
+                return res.status(403).json({ error: 'Общий список людей доступен только владельцу. Для поиска введи точный @username.' });
+            }
+            const found = await getUserByUsername(exact.slice(1));
+            if (!found || found.id === req.userId) return res.json({ users: [] });
+            const blocks = await blockedBetween(req.userId, found.id);
+            if (blocks.a_blocks_b || blocks.b_blocks_a) return res.json({ users: [] });
+            return res.json({ users: [publicProfile(found, req.userId)] });
+        }
         const q = clean(req.query.q, 50).replace(/^@/, '').toLowerCase();
         const params = [req.userId];
         let where = 'u.id <> $1';
         if (q) { params.push(`%${q}%`); where += ' AND (u.username_norm LIKE $2 OR lower(u.display_name) LIKE $2)'; }
         const { rows } = await pool.query(
-            `SELECT u.id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,
+            `SELECT u.id,u.username,u.display_name,u.avatar_data,u.bio,u.presence_status,u.privacy_online,u.verified_badge,u.created_at,u.phone_e164,u.phone_visible,u.phone_verified,
                     EXISTS(SELECT 1 FROM blocks b WHERE b.blocker_id=$1 AND b.blocked_id=u.id) AS blocked,
                     EXISTS(SELECT 1 FROM blocks b WHERE b.blocker_id=u.id AND b.blocked_id=$1) AS blocked_me
              FROM users u WHERE ${where}
@@ -730,6 +872,17 @@ app.get('/api/users', authMiddleware, async (req, res) => {
         res.json({ users: rows.filter(row => !row.blocked && !row.blocked_me)
             .map(row => ({ ...publicProfile(row, req.userId), blocked: false, blockedMe: false })) });
     } catch (error) { console.error(error); res.status(500).json({ error: 'Ошибка поиска.' }); }
+});
+
+// Individual profiles are accessible to signed-in users, independent of the owner-only directory.
+app.get('/api/users/:userId', authMiddleware, async (req, res) => {
+    try {
+        const user = await getUser(clean(req.params.userId, 120));
+        if (!user) return res.status(404).json({ error: 'Пользователь не найден.' });
+        const blocked = await blockedBetween(req.userId, user.id);
+        if (blocked.a_blocks_b || blocked.b_blocks_a) return res.status(403).json({ error: 'Профиль недоступен.' });
+        res.json({ profile: publicProfile(user, req.userId) });
+    } catch (err) { console.error(err); res.status(500).json({ error: 'Не удалось открыть профиль.' }); }
 });
 
 /* ================================
@@ -1232,6 +1385,10 @@ async function init() {
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_status TEXT NOT NULL DEFAULT 'online'").catch(() => {});
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_online TEXT NOT NULL DEFAULT 'everyone'").catch(() => {});
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_badge BOOLEAN NOT NULL DEFAULT FALSE').catch(() => {});
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_e164 TEXT');
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE');
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_visible BOOLEAN NOT NULL DEFAULT FALSE');
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS users_phone_unique ON users(phone_e164) WHERE phone_e164 IS NOT NULL');
     await pool.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS client_message_id TEXT').catch(() => {});
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS messages_sender_client_message_id_idx
         ON messages(sender_id,client_message_id) WHERE client_message_id IS NOT NULL`).catch(() => {});

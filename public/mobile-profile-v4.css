@@ -40,3 +40,21 @@
   .bp4-nav button.bp4-selected {color:#62b6ff;background:#243345;font-weight:700;}
   @media(max-height:680px) { .bp4-hero {padding:12px 10px 13px;} .bp4-avatar{width:96px;height:96px;font-size:39px;} .bp4-actions{padding-bottom:13px;} }
 }
+
+/* v5: predictable icon alignment on Android (font glyphs must not shift buttons). */
+.bp4-nav button[hidden],.directory-tab[hidden],.mobile-nav-item[hidden]{display:none!important;}
+@media(max-width:700px){
+  .bp4-page .bp4-nav { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .owner-directory .bp4-page .bp4-nav { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .bp4-actions button { min-width:0; padding:8px 3px; line-height:1.25; text-align:center; }
+  .bp4-action-icon { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; line-height:0; }
+  .bp4-action-icon svg {width:24px;height:24px;display:block;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  .bp4-nav button { min-width:0; position:relative; overflow:hidden; line-height:1.2; }
+  .bp4-nav button span { display:grid;place-items:center;min-width:28px;height:28px;line-height:1;flex:none; }
+  .bp4-extra-info { margin-top:12px; }
+  .bp4-phone-button {background:transparent;color:inherit;border:0;display:grid;grid-template-columns:32px 1fr;column-gap:12px;width:100%;align-items:center;text-align:left;min-height:68px;padding:10px 0;}
+  .bp4-phone-button>span{grid-row:1/3;font-size:24px;color:#89accc;text-align:center;}
+  .bp4-phone-button strong{font-size:15px;word-break:break-word;}
+  .bp4-phone-button small{font-size:12px;color:#8c959f;}
+  .other-profile-avatar {width:105px!important;height:105px!important;min-width:105px!important;min-height:105px!important;margin:0 auto 12px;font-size:38px!important;overflow:hidden;border-radius:50%;}
+}

@@ -180,3 +180,31 @@ button { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
 }
+
+/* v5 account privacy, SMS login and profiles */
+[hidden],.directory-tab[hidden],.mobile-nav-item[hidden] { display:none!important; }
+.phone-current {display:flex; flex-wrap:wrap; align-items:center;justify-content:space-between;gap:8px;padding:14px;background:rgba(121,160,204,.08);border-radius:12px;margin:14px 0;}
+.phone-current strong{color:#f5faff;}.phone-current span{color:#8cc9ff;overflow-wrap:anywhere;}
+.phone-privacy-check{display:flex;align-items:center;gap:12px;min-height:55px;line-height:1.3;cursor:pointer;}
+.phone-privacy-check input {appearance:auto;width:20px;min-width:20px;height:20px;accent-color:#3390ec;}
+.phone-link-block{margin-top:22px;padding-top:18px;border-top:1px solid rgba(160,190,220,.15);}
+.phone-link-block h3{margin:0 0 9px;font-size:17px;}.phone-link-block .field-label{display:block;margin:13px 0 7px;}
+.phone-link-block .plain-field,#phone-login-form .plain-field{width:100%;min-height:46px;box-sizing:border-box;}
+.phone-link-block button{margin-top:10px;}
+#phone-login-form .field-label{margin:12px 0 7px;display:block;}
+#phone-login-form .hint{line-height:1.5;margin:0 0 13px;}
+#phone-login-form button{margin-top:10px;}
+.other-profile-header{text-align:center;display:flex;align-items:center;flex-direction:column;gap:6px;padding:16px 6px 22px;}
+.other-profile-header h2{margin:0;font-size:24px;overflow-wrap:anywhere;}
+.other-profile-username{color:#9aacc4;}
+.other-profile-field{padding:14px 0;border-top:1px solid rgba(150,173,202,.14);display:flex;flex-direction:column;gap:5px;}
+.other-profile-field small{color:#9aacc4;font-size:12px;}.other-profile-field strong{font-size:15px;overflow-wrap:anywhere;}
+.other-profile-avatar {display:grid;place-items:center;width:110px;height:110px;min-width:110px;min-height:110px;overflow:hidden;border-radius:50%;font-size:38px;}
+.other-profile-avatar img{height:100%;width:100%;object-fit:cover;}
+@media(max-width:700px) { .mobile-bottom-nav{grid-template-columns:repeat(2,minmax(0,1fr));} .owner-directory .mobile-bottom-nav{grid-template-columns:repeat(3,minmax(0,1fr));} }
+
+@media (max-width:700px) {
+  .mobile-bottom-nav .mobile-nav-item { min-width:0; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; text-align:center; line-height:1.15; }
+  .mobile-bottom-nav .mobile-nav-item svg { display:block; width:24px; height:24px; min-width:24px; flex-shrink:0; margin:0 auto; }
+  .mobile-bottom-nav .mobile-nav-item span { display:block; text-align:center; max-width:100%; }
+}

@@ -5,7 +5,7 @@
   const IS_WEB = window.burmalDesktop?.platform === 'web';
   document.documentElement.dataset.client = IS_WEB ? 'web' : 'desktop';
   const state = {
-    baseUrl: IS_WEB ? window.location.origin : (localStorage.getItem('burmal.baseUrl') || 'https://my-chat-ucw4.onrender.com'),
+    baseUrl: IS_WEB ? window.location.origin : 'https://my-chat-ucw4.onrender.com',
     token: localStorage.getItem('burmal.token') || '',
     profile: null,
     chats: [],
@@ -29,8 +29,6 @@
 
   const authScreen = $('auth-screen');
   const appScreen = $('app-screen');
-  const serverUrl = $('server-url');
-  const serverStatus = $('server-status');
   const chatList = $('chat-list');
   const searchResults = $('search-results');
   const searchInput = $('search-users');
@@ -62,18 +60,6 @@
     toast.className = `toast show ${type}`.trim();
     clearTimeout(state.toastTimer);
     state.toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3600);
-  }
-  function setServerStatus(message, good = false) {
-    serverStatus.textContent = message;
-    serverStatus.style.color = good ? 'var(--green)' : 'var(--muted)';
-  }
-  function normalizedBaseUrl(value) {
-    const url = new URL(String(value || '').trim());
-    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) {
-      throw new Error('Используй HTTPS-адрес Render, например https://my-chat.onrender.com.');
-    }
-    if (url.username || url.password || url.search || url.hash) throw new Error('Укажи только адрес сервиса, без параметров и секретов.');
-    return url.origin;
   }
   async function api(path, method = 'GET', body = null) {
     if (!state.baseUrl) throw new Error('Не удалось определить адрес сервера Render. Проверь настройки подключения.');
@@ -285,12 +271,12 @@
     document.querySelectorAll('[data-auth-tab]').forEach(button => button.classList.toggle('active', button.dataset.authTab === tab));
     $('login-form').classList.toggle('hidden', tab !== 'login');
     $('register-form').classList.toggle('hidden', tab !== 'register');
+    $('phone-login-form').classList.toggle('hidden', tab !== 'phone');
   }
   function showAuth() {
     authScreen.classList.remove('hidden');
     appScreen.classList.add('hidden');
     appScreen.classList.remove('mobile-chat-open');
-    serverUrl.value = IS_WEB ? window.location.origin : state.baseUrl;
     setAuthTab('login');
   }
   function showApp() {
@@ -298,8 +284,13 @@
     appScreen.classList.remove('hidden');
     updateSelfProfile();
   }
+  function isOwner() { return String(state.profile?.username || '').toLowerCase() === 'z1pperj'; }
   function updateSelfProfile() {
     if (!state.profile) return;
+    const owner = isOwner();
+    ['tab-people','mobile-nav-people','bp4-people'].forEach(id => { const el = $(id); if (el) el.hidden = !owner; });
+    document.documentElement.classList.toggle('owner-directory', owner);
+    if (!owner && state.directoryMode === 'people') { state.directoryMode = 'chats'; updateDirectoryTabs(); }
     paintAvatar($('my-avatar'), state.profile);
     $('my-name').textContent = state.profile.displayName || state.profile.username || 'Пользователь';
     $('my-username').textContent = `@${state.profile.username || ''}`;
@@ -321,23 +312,6 @@
     $('attach-button').disabled = !enabled;
   }
 
-  async function checkServer() {
-    try {
-      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(serverUrl.value);
-      serverUrl.value = state.baseUrl;
-      localStorage.setItem('burmal.baseUrl', state.baseUrl);
-      setServerStatus('Проверка сервера…');
-      const result = await window.burmalDesktop.apiRequest({ baseUrl: state.baseUrl, path: '/api/status', method: 'GET' });
-      if (!result.ok) throw new Error(result.data?.error || `Сервер ответил HTTP ${result.status}`);
-      const data = result.data || {};
-      setServerStatus(`Сервер доступен · пользователей: ${Number(data.users || 0)}`, true);
-      showToast('Сервер доступен.', 'success');
-    } catch (error) {
-      setServerStatus(error.message || 'Не удалось проверить сервер.');
-      showToast(error.message || 'Не удалось проверить сервер.', 'error');
-    }
-  }
-
   async function finishLogin(data) {
     if (data?.verificationRequired) {
       showToast(data.message || 'Проверь почту для подтверждения регистрации.');
@@ -347,22 +321,18 @@
     state.token = data.token;
     state.profile = data.profile;
     localStorage.setItem('burmal.token', state.token);
-    localStorage.setItem('burmal.baseUrl', state.baseUrl);
     showApp();
     updateAdminAvailability();
     connectSocket();
     await loadChats();
-    if (!state.chats.length) await switchDirectory('people');
+    if (!state.chats.length && isOwner()) await switchDirectory('people');
     showToast(`Добро пожаловать, ${state.profile.displayName || state.profile.username}!`, 'success');
   }
 
   $('login-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
-      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(serverUrl.value);
-      serverUrl.value = state.baseUrl;
-      localStorage.setItem('burmal.baseUrl', state.baseUrl);
-      const username = $('login-username').value.trim();
+          const username = $('login-username').value.trim();
       const password = $('login-password').value;
       const button = $('login-form').querySelector('button[type="submit"]');
       button.disabled = true;
@@ -380,10 +350,7 @@
   $('register-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
-      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(serverUrl.value);
-      serverUrl.value = state.baseUrl;
-      localStorage.setItem('burmal.baseUrl', state.baseUrl);
-      const form = $('register-form');
+          const form = $('register-form');
       const payload = {
         username: $('register-username').value.trim(),
         displayName: $('register-displayname').value.trim(),
@@ -548,12 +515,13 @@
     if (!state.chats.length) {
       const empty = document.createElement('div');
       empty.className = 'no-results';
-      empty.textContent = 'Пока нет чатов. Найди пользователя через поиск выше.';
+      empty.textContent = isOwner() ? 'Пока нет чатов. Открой вкладку «Люди».' : 'Пока нет чатов. Когда тебе напишут, переписка появится здесь.';
       chatList.append(empty);
       return;
     }
     for (const chat of state.chats) {
       const user = chat.user || {};
+      if (!isOwner() && searchInput.value.trim() && !`${user.username || ''} ${user.displayName || ''}`.toLowerCase().includes(searchInput.value.trim().toLowerCase())) continue;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `chat-row${state.selectedUser?.id === user.id ? ' active' : ''}`;
@@ -581,23 +549,29 @@
       main.append(top, bottom);
       button.append(avatar, main);
       button.addEventListener('click', () => openChat(user));
+      // Long press a conversation to inspect the other person's profile.
+      let pressTimer = null;
+      button.addEventListener('touchstart', () => { pressTimer = setTimeout(() => { pressTimer = null; viewUserProfile(user); }, 650); }, { passive: true });
+      ['touchend','touchcancel','touchmove'].forEach(evt => button.addEventListener(evt, () => clearTimeout(pressTimer), { passive: true }));
       chatList.append(button);
     }
   }
 
   function updateDirectoryTabs() {
-    const people = state.directoryMode === 'people';
+    const people = isOwner() && state.directoryMode === 'people';
     $('tab-chats').classList.toggle('active', !people);
     $('tab-people').classList.toggle('active', people);
     $('tab-chats').setAttribute('aria-selected', String(!people));
     $('tab-people').setAttribute('aria-selected', String(people));
     $('list-heading-label').textContent = searchInput.value.trim() ? 'Результаты поиска' : people ? 'Пользователи' : 'Недавние чаты';
-    searchResults.classList.toggle('hidden', !people && !searchInput.value.trim());
-    chatList.classList.toggle('hidden', people || Boolean(searchInput.value.trim()));
+    const remote = Boolean(searchInput.value.trim()) && (isOwner() || searchInput.value.trim().startsWith('@'));
+    searchResults.classList.toggle('hidden', !people && !remote);
+    chatList.classList.toggle('hidden', people || remote);
   }
   async function searchUsers(query = '') {
     if (!state.token) return;
     const q = String(query || '').trim();
+    if (!isOwner() && !q.startsWith('@')) { state.directoryMode = 'chats'; updateDirectoryTabs(); renderChatList(); return; }
     if (!q && state.directoryMode === 'chats') { updateDirectoryTabs(); return; }
     try {
       const data = await api(`/api/users?q=${encodeURIComponent(q)}`);
@@ -612,6 +586,7 @@
     }
   }
   async function switchDirectory(mode) {
+    if (mode === 'people' && !isOwner()) return;
     state.directoryMode = mode;
     updateDirectoryTabs();
     if (mode === 'people') await searchUsers(searchInput.value);
@@ -638,7 +613,7 @@
       titleLine.append(name);
       if (user.verified) { const badge = document.createElement('span'); badge.className = 'verified'; badge.textContent = '✓'; badge.title = 'Подтверждённый профиль'; titleLine.append(badge); }
       text.append(titleLine, username); button.append(avatar, text);
-      button.addEventListener('click', () => openChat(user)); searchResults.append(button);
+      button.addEventListener('click', () => viewUserProfile(user)); searchResults.append(button);
     }
   }
 
@@ -708,6 +683,8 @@
         const author = document.createElement('div'); author.className = 'message-author';
         const username = document.createElement('span'); username.textContent = message.senderDisplayName || message.senderUsername || state.selectedUser?.username || '';
         author.append(username);
+        author.style.cursor = 'pointer'; author.title = 'Открыть профиль';
+        author.addEventListener('click', () => viewUserProfile(state.selectedUser));
         if (message.senderVerified || state.usersById.get(message.senderId)?.verified) {
           const badge = document.createElement('span'); badge.className = 'verified'; badge.title = 'Подтверждённый профиль'; badge.textContent = '✓'; author.append(badge);
         }
@@ -831,9 +808,8 @@
     }
   });
 
-  $('check-server').addEventListener('click', checkServer);
   $('tab-chats').addEventListener('click', () => switchDirectory('chats'));
-  $('tab-people').addEventListener('click', () => switchDirectory('people'));
+  $('tab-people').addEventListener('click', () => { if (isOwner()) switchDirectory('people'); });
   $('mobile-chat-back').addEventListener('click', () => appScreen.classList.remove('mobile-chat-open'));
   $('mobile-profile-button').addEventListener('click', () => $('profile-button').click());
   $('mobile-admin-button').addEventListener('click', () => $('admin-button').click());
@@ -841,19 +817,20 @@
   document.querySelectorAll('[data-auth-tab]').forEach(button => button.addEventListener('click', () => setAuthTab(button.dataset.authTab)));
   searchInput.addEventListener('input', () => {
     clearTimeout(state.searchTimer);
-    state.searchTimer = setTimeout(() => searchUsers(searchInput.value), 280);
+    if (isOwner() || searchInput.value.trim().startsWith('@')) state.searchTimer = setTimeout(() => searchUsers(searchInput.value), 350);
+    else { renderChatList(); updateDirectoryTabs(); }
   });
   searchInput.addEventListener('keydown', event => {
-    if (event.key === 'Enter') { event.preventDefault(); clearTimeout(state.searchTimer); searchUsers(searchInput.value); }
-    if (event.key === 'Escape') { searchInput.value = ''; searchUsers(''); }
+    if (event.key === 'Enter' && (isOwner() || searchInput.value.trim().startsWith('@'))) { event.preventDefault(); clearTimeout(state.searchTimer); searchUsers(searchInput.value); }
+    if (event.key === 'Escape') { searchInput.value = ''; if (isOwner()) searchUsers(''); else { renderChatList(); updateDirectoryTabs(); } }
   });
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      if (!appScreen.classList.contains('hidden')) searchInput.focus();
+      event.preventDefault(); if (!appScreen.classList.contains('hidden')) searchInput.focus();
     }
-    if (event.key === 'Escape' && !$('settings-modal').classList.contains('hidden')) {
+    if (event.key === 'Escape') {
       $('settings-modal').classList.add('hidden');
+      $('other-profile-modal').classList.add('hidden');
     }
   });
   $('refresh-chats').addEventListener('click', () => loadChats().then(() => showToast('Список чатов обновлён.', 'success')).catch(error => showToast(error.message, 'error')));
@@ -863,22 +840,81 @@
     disconnectSocket(); $('admin-button').classList.add('hidden'); $('mobile-admin-button').classList.add('hidden'); state.token = ''; state.profile = null; state.chats = []; state.directory = []; state.usersById.clear(); state.selectedUser = null; state.selectedConversationId = null; state.messages = []; state.avatarRevisionById.clear(); appScreen.classList.remove('mobile-chat-open');
     localStorage.removeItem('burmal.token'); setComposerEnabled(false); showAuth(); showToast('Ты вышел из аккаунта.');
   });
-  $('settings-button').addEventListener('click', () => { $('settings-server-url').value = state.baseUrl; $('settings-server-url').readOnly = IS_WEB; $('save-settings').disabled = IS_WEB; $('settings-modal').classList.remove('hidden'); });
-  $('close-settings').addEventListener('click', () => $('settings-modal').classList.add('hidden'));
-  $('cancel-settings').addEventListener('click', () => $('settings-modal').classList.add('hidden'));
-  $('settings-modal').addEventListener('click', (event) => { if (event.target === $('settings-modal')) $('settings-modal').classList.add('hidden'); });
-  $('save-settings').addEventListener('click', async () => {
+  function showPhoneSettings() {
+    if (!state.profile) return;
+    $('current-phone').textContent = state.profile.phone || 'Не привязан';
+    $('phone-link-number').value = state.profile.phone || '';
+    $('phone-visible').checked = Boolean(state.profile.phoneVisible);
+    $('phone-visible').disabled = !state.profile.phoneVerified;
+    $('settings-modal').classList.remove('hidden');
+  }
+  $('settings-button').addEventListener('click', showPhoneSettings);
+  ['close-settings','cancel-settings'].forEach(id => $(id).addEventListener('click', () => $('settings-modal').classList.add('hidden')));
+  $('settings-modal').addEventListener('click', event => { if (event.target === $('settings-modal')) $('settings-modal').classList.add('hidden'); });
+  async function runPhoneAction(buttonId, task) {
+    const button = $(buttonId);
+    if (button.disabled) return;
+    button.disabled = true;
+    try { await task(); } catch (error) { showToast(error.message || 'Не получилось.', 'error'); }
+    finally { button.disabled = false; }
+  }
+  $('phone-link-send').addEventListener('click', () => runPhoneAction('phone-link-send', async () => {
+    const data = await api('/api/profile/phone/start', 'POST', { phone: $('phone-link-number').value.trim() });
+    showToast(data.message || 'SMS отправлено.', 'success');
+  }));
+  $('phone-link-confirm').addEventListener('click', () => runPhoneAction('phone-link-confirm', async () => {
+    const data = await api('/api/profile/phone/confirm', 'POST', { code: $('phone-link-code').value.trim() });
+    state.profile = data.profile;
+    updateSelfProfile(); showPhoneSettings(); showToast('Номер привязан и скрыт по умолчанию.', 'success');
+  }));
+  $('save-phone-privacy').addEventListener('click', () => runPhoneAction('save-phone-privacy', async () => {
+    if (!state.profile?.phoneVerified) throw new Error('Сначала привяжи номер.');
+    const data = await api('/api/profile', 'PATCH', {
+      username: state.profile.username, displayName: state.profile.displayName,
+      bio: state.profile.bio || '', avatarColor: state.profile.avatarColor,
+      presenceStatus: state.profile.presenceStatus, privacyOnline: state.profile.privacyOnline,
+      phoneVisible: $('phone-visible').checked
+    });
+    state.profile = data.profile; updateSelfProfile(); showToast('Видимость номера сохранена.', 'success');
+  }));
+  $('phone-login-send').addEventListener('click', () => runPhoneAction('phone-login-send', async () => {
+    const data = await api('/api/auth/phone/start', 'POST', { phone: $('phone-login-number').value.trim() });
+    showToast(data.message || 'Если номер привязан, SMS отправлено.', 'success');
+  }));
+  $('phone-login-form').addEventListener('submit', event => {
+    event.preventDefault();
+    runPhoneAction('phone-login-send', async () => {
+      await finishLogin(await api('/api/auth/phone/verify', 'POST', {
+        phone: $('phone-login-number').value.trim(), code: $('phone-login-code').value.trim()
+      }));
+    });
+  });
+
+  let viewedProfile = null;
+  async function viewUserProfile(user) {
+    if (!user?.id) return;
     try {
-      const nextBase = IS_WEB ? window.location.origin : normalizedBaseUrl($('settings-server-url').value);
-      if (nextBase !== state.baseUrl) {
-        state.baseUrl = nextBase; localStorage.setItem('burmal.baseUrl', nextBase);
-        disconnectSocket(); state.selectedUser = null; state.selectedConversationId = null; state.chats = []; state.messages = [];
-        if (state.token) { state.token = ''; localStorage.removeItem('burmal.token'); }
-        showAuth(); serverUrl.value = nextBase;
-        showToast('Адрес изменён. Войди заново на новом сервере.', 'success');
-      }
-      $('settings-modal').classList.add('hidden');
-    } catch (error) { showToast(error.message, 'error'); }
+      const result = await api(`/api/users/${encodeURIComponent(user.id)}`);
+      viewedProfile = result.profile;
+      paintAvatar($('other-profile-avatar'), viewedProfile);
+      $('other-profile-title').textContent = viewedProfile.displayName || viewedProfile.username || 'Пользователь';
+      $('other-profile-username').textContent = `@${viewedProfile.username || ''}`;
+      $('other-profile-verified').classList.toggle('hidden', !viewedProfile.verified);
+      $('other-profile-bio').textContent = viewedProfile.bio || 'Описание не указано';
+      $('other-profile-phone-row').classList.toggle('hidden', !viewedProfile.phone);
+      $('other-profile-phone').textContent = viewedProfile.phone || '';
+      $('other-profile-modal').classList.remove('hidden');
+    } catch (error) { showToast(error.message || 'Не удалось открыть профиль.', 'error'); }
+  }
+  $('close-other-profile').addEventListener('click', () => $('other-profile-modal').classList.add('hidden'));
+  $('other-profile-modal').addEventListener('click', e => { if (e.target === $('other-profile-modal')) $('other-profile-modal').classList.add('hidden'); });
+  $('other-profile-message').addEventListener('click', () => {
+    $('other-profile-modal').classList.add('hidden');
+    if (viewedProfile) openChat(viewedProfile);
+  });
+  [$('chat-avatar'), $('chat-name')].forEach(el => {
+    el.style.cursor = 'pointer'; el.setAttribute('title', 'Открыть профиль');
+    el.addEventListener('click', () => viewUserProfile(state.selectedUser));
   });
 
   function closeProfileModal() {
@@ -1085,14 +1121,13 @@
   });
 
   async function restoreSession() {
-    serverUrl.value = state.baseUrl;
     if (!state.baseUrl || !state.token) { showAuth(); return; }
     try {
-      state.baseUrl = IS_WEB ? window.location.origin : normalizedBaseUrl(state.baseUrl);
+      state.baseUrl = IS_WEB ? window.location.origin : 'https://my-chat-ucw4.onrender.com';
       const data = await api('/api/profile');
       state.profile = data.profile;
       if (!state.profile) throw new Error('Профиль не найден.');
-      showApp(); updateAdminAvailability(); connectSocket(); await loadChats(); if (!state.chats.length) await switchDirectory('people');
+      showApp(); updateAdminAvailability(); connectSocket(); await loadChats(); if (!state.chats.length && isOwner()) await switchDirectory('people');
     } catch {
       state.token = ''; localStorage.removeItem('burmal.token'); showAuth();
     }

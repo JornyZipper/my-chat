@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src https: wss: http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self';">
   <meta name="theme-color" content="#17212b">
-  <title>BurmalpticajopaChat · v4.0</title>
-  <link rel="stylesheet" href="./styles.css?v=20261009c">
-  <link rel="stylesheet" href="./interface-v3.css?v=20261009c">
-  <link rel="stylesheet" href="./mobile-profile-v4.css?v=20261010d">
+  <title>BurmalpticajopaChat · v5.0</title>
+  <link rel="stylesheet" href="./styles.css?v=20261010v5">
+  <link rel="stylesheet" href="./interface-v3.css?v=20261010v5">
+  <link rel="stylesheet" href="./mobile-profile-v4.css?v=20261010v5">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -30,15 +30,9 @@
         <p class="eyebrow">WELCOME BACK</p>
         <h1>Рады тебя видеть</h1>
         <p class="auth-description">Войди в аккаунт, чтобы продолжить общение.</p>
-
-        <div class="server-connect-block">
-          <div class="server-label-row"><label class="field-label" for="server-url">Сервер мессенджера</label><button id="check-server" class="server-check" type="button" title="Проверить подключение"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg> Проверить</button></div>
-          <div class="server-field"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><input id="server-url" type="url" placeholder="https://my-chat-ucw4.onrender.com" autocomplete="url" spellcheck="false"></div>
-          <div id="server-status" class="hint"><span class="status-pip"></span> По умолчанию используется https://my-chat-ucw4.onrender.com.</div>
-        </div>
-
-        <div class="auth-tabs" role="tablist" aria-label="Тип авторизации">
+<div class="auth-tabs" role="tablist" aria-label="Тип авторизации">
           <button class="auth-tab active" data-auth-tab="login" role="tab" aria-selected="true" type="button">Вход</button>
+          <button class="auth-tab" data-auth-tab="phone" role="tab" aria-selected="false" type="button">По номеру</button>
           <button class="auth-tab" data-auth-tab="register" role="tab" aria-selected="false" type="button">Регистрация</button>
         </div>
 
@@ -48,6 +42,17 @@
           <label class="field-label" for="login-password">Пароль</label>
           <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Твой пароль"></div>
           <button class="primary-button full-width" type="submit">Войти <span class="button-arrow">→</span></button>
+        </form>
+
+
+        <form id="phone-login-form" class="auth-form hidden">
+          <p class="hint">Для начала привяжи номер в настройках существующего аккаунта. После подтверждения можно входить по SMS.</p>
+          <label class="field-label" for="phone-login-number">Номер телефона</label>
+          <input class="plain-field" id="phone-login-number" type="tel" autocomplete="tel" placeholder="+380XXXXXXXXX" required>
+          <button id="phone-login-send" class="secondary-button full-width" type="button">Получить SMS-код</button>
+          <label class="field-label" for="phone-login-code">Код из SMS</label>
+          <input class="plain-field" id="phone-login-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" placeholder="Код подтверждения" required>
+          <button class="primary-button full-width" type="submit">Войти по коду →</button>
         </form>
 
         <form id="register-form" class="auth-form hidden">
@@ -67,7 +72,7 @@
         </form>
         <p class="auth-footnote"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg> Соединение с сервером защищено. Никогда не передавай пароль другим людям.</p>
       </div>
-      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> v3.1</div>
+      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> v5.0</div>
     </section>
   </main>
 
@@ -80,18 +85,18 @@
       <div class="rail-spacer"></div>
       <button id="admin-button" class="rail-button hidden" type="button" title="Админ-панель" aria-label="Админ-панель"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></button>
       <button id="profile-button" class="rail-button" type="button" title="Мой профиль" aria-label="Мой профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button>
-      <button id="settings-button" class="rail-button" type="button" title="Настройки сервера" aria-label="Настройки сервера"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></button>
+      <button id="settings-button" class="rail-button" type="button" title="Настройки аккаунта" aria-label="Настройки аккаунта"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></button>
       <button id="logout-button" class="rail-button rail-logout" type="button" title="Выйти из аккаунта" aria-label="Выйти из аккаунта"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 16l4-4-4-4M18 12H9"/></svg></button>
       <div class="rail-bottom"><div id="socket-indicator" class="connection-dot offline" title="Нет соединения"></div></div>
     </aside>
 
     <aside class="sidebar">
       <header class="sidebar-header">
-        <div class="sidebar-heading"><p class="eyebrow">BURMALPTICAJOPACHAT · v4.0</p><h1>Сообщения</h1><div id="account-identity" class="account-identity" title="Аккаунт, под которым открыты чаты">Аккаунт: не выполнен вход</div></div>
+        <div class="sidebar-heading"><p class="eyebrow">BURMALPTICAJOPACHAT · v5.0</p><h1>Сообщения</h1><div id="account-identity" class="account-identity" title="Аккаунт, под которым открыты чаты">Аккаунт: не выполнен вход</div></div>
         <div class="mobile-top-actions"><button id="mobile-profile-button" class="icon-button header-tool" type="button" title="Мой профиль" aria-label="Мой профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button><button id="mobile-admin-button" class="icon-button header-tool hidden" type="button" title="Админ-панель" aria-label="Админ-панель"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></button><button id="mobile-settings-button" class="icon-button header-tool" type="button" title="Настройки" aria-label="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></button></div>
         <button id="refresh-chats" class="icon-button header-tool" type="button" title="Обновить чаты" aria-label="Обновить чаты"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg></button>
       </header>
-      <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg><input id="search-users" type="search" placeholder="Поиск людей и чатов" autocomplete="off"><kbd>Ctrl K</kbd></div>
+      <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></svg><input id="search-users" type="search" placeholder="Поиск по чатам или @username" autocomplete="off"><kbd>Ctrl K</kbd></div>
       <div class="directory-tabs" role="tablist" aria-label="Списки чатов и пользователей"><button id="tab-chats" class="directory-tab active" type="button" aria-selected="true">Чаты</button><button id="tab-people" class="directory-tab" type="button" aria-selected="false">Люди</button></div>
       <div class="list-heading"><span id="list-heading-label">Недавние чаты</span><span class="list-heading-line"></span></div>
       <div id="chat-list" class="chat-list"></div>
@@ -149,13 +154,37 @@
     <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="modal-card">
         <button id="close-settings" class="modal-close" type="button" aria-label="Закрыть">×</button>
-        <div class="modal-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></div>
-        <p class="eyebrow">CONNECTION</p><h2 id="settings-title">Настройки сервера</h2>
-        <p class="modal-description">Укажи адрес веб-сервиса, на котором работает BurmalpticajopaChat.</p>
-        <label class="field-label" for="settings-server-url">URL веб-сервиса Render</label>
-        <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><input id="settings-server-url" type="url" placeholder="https://my-chat-ucw4.onrender.com" spellcheck="false"></div>
-        <p class="hint">Не вставляй сюда DATABASE_URL, пароли или токены.</p>
-        <div class="modal-actions"><button id="cancel-settings" class="secondary-button" type="button">Отмена</button><button id="save-settings" class="primary-button" type="button">Сохранить и подключить</button></div>
+        <p class="eyebrow">ПРИВАТНОСТЬ</p><h2 id="settings-title">Телефон и безопасность</h2>
+        <p class="modal-description">Номер телефона не показывается другим пользователям, пока ты сам не разрешишь.</p>
+        <div class="phone-current"><strong>Мой номер</strong><span id="current-phone">Не привязан</span></div>
+        <label class="phone-privacy-check"><input id="phone-visible" type="checkbox"> Показывать мой номер другим пользователям</label>
+        <button id="save-phone-privacy" class="secondary-button full-width" type="button">Сохранить видимость</button>
+        <div class="phone-link-block">
+          <h3>Привязать номер по SMS</h3>
+          <p class="hint">Укажи международный номер с + и кодом страны. После привязки можно будет входить по SMS.</p>
+          <label class="field-label" for="phone-link-number">Номер телефона</label>
+          <input class="plain-field" id="phone-link-number" type="tel" autocomplete="tel" placeholder="+380XXXXXXXXX">
+          <button id="phone-link-send" class="secondary-button full-width" type="button">Отправить код</button>
+          <label class="field-label" for="phone-link-code">Код из SMS</label>
+          <input class="plain-field" id="phone-link-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Код подтверждения">
+          <button id="phone-link-confirm" class="primary-button full-width" type="button">Подтвердить номер</button>
+        </div>
+        <div class="modal-actions"><button id="cancel-settings" class="secondary-button" type="button">Закрыть</button></div>
+      </div>
+    </div>
+
+    <div id="other-profile-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="other-profile-title">
+      <div class="modal-card profile-modal-card">
+        <button id="close-other-profile" type="button" class="modal-close" aria-label="Закрыть">×</button>
+        <div class="other-profile-header">
+          <div id="other-profile-avatar" class="avatar other-profile-avatar">U</div>
+          <h2 id="other-profile-title">Профиль пользователя</h2>
+          <div id="other-profile-verified" class="verified hidden">✓</div>
+          <div id="other-profile-username" class="other-profile-username">@username</div>
+        </div>
+        <div class="other-profile-field"><small>О себе</small><strong id="other-profile-bio">—</strong></div>
+        <div id="other-profile-phone-row" class="other-profile-field hidden"><small>Номер телефона</small><strong id="other-profile-phone"></strong></div>
+        <div class="modal-actions"><button id="other-profile-message" class="primary-button" type="button">Написать сообщение</button></div>
       </div>
     </div>
 
@@ -218,10 +247,10 @@
       <div class="call-controls"><button id="muteCallButton" class="call-control" type="button" aria-label="Микрофон" aria-pressed="false">🎙</button><button id="cameraCallButton" class="call-control hidden" type="button" aria-label="Камера" aria-pressed="false">📷</button><button id="hangupCallButton" class="call-control hangup" type="button" aria-label="Завершить звонок">☎</button></div>
     </section>
   </div>
-  <script src="./browser-bridge.js?v=20261009c"></script>
-  <script src="./renderer.js?v=20261009c"></script>
-  <script src="./calls.js?v=20261009c"></script>
-  <script src="./mobile-ui.js?v=20261009c"></script>
-  <script src="./mobile-profile-v4.js?v=20261010d"></script>
+  <script src="./browser-bridge.js?v=20261010v5"></script>
+  <script src="./renderer.js?v=20261010v5"></script>
+  <script src="./calls.js?v=20261010v5"></script>
+  <script src="./mobile-ui.js?v=20261010v5"></script>
+  <script src="./mobile-profile-v4.js?v=20261010v5"></script>
 </body>
 </html>
