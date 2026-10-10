@@ -4,25 +4,53 @@
   'use strict';
   const app = document.getElementById('app-screen');
   const btnChats = document.getElementById('mobile-nav-chats');
-  const btnPeople = document.getElementById('mobile-nav-people');
-  const btnProfile = document.getElementById('mobile-nav-profile');
+  const btnContacts = document.getElementById('mobile-nav-contacts');
+  const btnCalls = document.getElementById('mobile-nav-calls');
+  const btnSettings = document.getElementById('mobile-nav-settings');
   const desktopChats = document.getElementById('tab-chats');
   const desktopPeople = document.getElementById('tab-people');
   const search = document.getElementById('search-users');
   const messageList = document.getElementById('message-list');
-  if (!app || !btnChats || !btnPeople || !desktopChats || !desktopPeople) return;
+  if (!app || !btnChats || !btnContacts || !desktopChats || !desktopPeople) return;
 
   const mobile = () => window.matchMedia('(max-width: 700px)').matches;
+  function setActiveNav(target) {
+    [btnContacts, btnCalls, btnChats, btnSettings].filter(Boolean).forEach(btn => {
+      const active = btn === target;
+      btn.classList.toggle('active', active);
+      if (active) btn.setAttribute('aria-current', 'page'); else btn.removeAttribute('aria-current');
+    });
+  }
   function syncNavigation() {
     const peopleSelected = desktopPeople.classList.contains('active');
-    btnChats.classList.toggle('active', !peopleSelected);
-    btnPeople.classList.toggle('active', peopleSelected);
-    if (!peopleSelected) btnChats.setAttribute('aria-current', 'page'); else btnChats.removeAttribute('aria-current');
-    if (peopleSelected) btnPeople.setAttribute('aria-current', 'page'); else btnPeople.removeAttribute('aria-current');
+    setActiveNav(peopleSelected ? btnContacts : btnChats);
   }
   btnChats.addEventListener('click', () => { desktopChats.click(); if (search) search.value = ''; syncNavigation(); });
-  btnPeople.addEventListener('click', () => { desktopPeople.click(); if (search) search.value = ''; syncNavigation(); });
-  btnProfile?.addEventListener('click', () => document.getElementById('profile-button')?.click());
+  btnContacts.addEventListener('click', () => {
+    // 'Люди' is an owner-only directory. Regular users get their own contacts
+    // plus exact @username search, never a hidden full-user listing.
+    const ownerDirectoryVisible = !desktopPeople.hidden && !desktopPeople.classList.contains('hidden')
+      && window.getComputedStyle(desktopPeople).display !== 'none';
+    if (ownerDirectoryVisible) desktopPeople.click();
+    else desktopChats.click();
+    if (search) { search.placeholder = 'Контакты или @username'; search.focus(); }
+    setTimeout(() => setActiveNav(btnContacts), 0);
+  });
+  btnCalls?.addEventListener('click', () => {
+    // Server does not expose call history: show the existing conversations
+    // instead of claiming a call-history feature that does not exist.
+    desktopChats.click();
+    if (search) search.placeholder = 'Выбери собеседника для звонка';
+    const title = document.getElementById('list-heading-label');
+    if (title) title.textContent = 'Открой чат и нажми 📞';
+    setTimeout(() => setActiveNav(btnCalls), 0);
+  });
+  btnSettings?.addEventListener('click', () => {
+    setActiveNav(btnSettings);
+    document.getElementById('settings-button')?.click();
+    // Keep Settings selected while the modal is opening.
+    setTimeout(() => setActiveNav(btnSettings), 0);
+  });
   new MutationObserver(syncNavigation).observe(desktopPeople, { attributes: true, attributeFilter: ['class'] });
   new MutationObserver(syncNavigation).observe(desktopChats, { attributes: true, attributeFilter: ['class'] });
   syncNavigation();
