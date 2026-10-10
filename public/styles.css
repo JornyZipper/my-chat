@@ -230,3 +230,9 @@ html[data-client="web"] .app-shell{height:100dvh}
  .modal-card{max-height:calc(100dvh - 20px);overflow:auto}
  .sidebar-header{min-height:79px;height:79px}
 }
+
+/* v8.5.6: dedicated internal +888 sign-in, shared desktop/mobile tabs */
+.auth-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.auth-tab{white-space:nowrap;min-width:0}
+#official-login-form .official-login-hint{display:block;margin:12px 0 14px;line-height:1.6;font-size:11px;color:#9ab1c4}
+#official-login-form .input-shell input{font-size:16px}

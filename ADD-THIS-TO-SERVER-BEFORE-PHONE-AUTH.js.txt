@@ -1,0 +1,61 @@
+/* ================================
+   OFFICIAL +888 LOGIN (in-app identity, NOT an SMS phone number)
+   Only a number already attached to an account can authenticate.
+   The account's existing password is still required.
+================================ */
+const officialLoginAttempts = new Map();
+const officialLoginDummyHash = bcrypt.hashSync('BurmalpticajopaChat:invalid-official-number', 10);
+function officialLoginAllowed(req, number) {
+    const now = Date.now();
+    if (officialLoginAttempts.size > 10000) {
+        for (const [key, value] of officialLoginAttempts) {
+            if (value.until <= now) officialLoginAttempts.delete(key);
+        }
+    }
+    const ip = String(req.ip || req.socket?.remoteAddress || 'unknown');
+    const keys = [
+        { key: `ip:${ip}`, limit: 60 },
+        { key: `number:${ip}:${number}`, limit: 8 }
+    ];
+    const records = keys.map(({ key, limit }) => {
+        const prev = officialLoginAttempts.get(key);
+        return { key, limit, record: prev && prev.until > now ? prev : { count: 0, until: now + 15 * 60 * 1000 } };
+    });
+    if (records.some(item => item.record.count >= item.limit)) return false;
+    for (const item of records) {
+        item.record.count += 1;
+        officialLoginAttempts.set(item.key, item.record);
+    }
+    return true;
+}
+
+app.post('/api/auth/official-login', async (req, res) => {
+    const number = String(req.body?.officialNumber || '').trim().replace(/[\s().-]/g, '').slice(0, 48);
+    const password = String(req.body?.password || '');
+    const invalid = { error: 'Неверный номер +888 или пароль.' };
+    if (!officialLoginAllowed(req, number)) {
+        return res.status(429).json({ error: 'Слишком много попыток входа. Повтори через 15 минут.' });
+    }
+    if (!/^\+888\d{8}$/.test(number) || !password || password.length > 200) {
+        return res.status(401).json(invalid);
+    }
+    try {
+        const { rows } = await pool.query(
+            'SELECT id,password_hash,email_verified FROM users WHERE official_number=$1 LIMIT 1', [number]
+        );
+        const account = rows[0];
+        // Compare even for unknown numbers to avoid a simple existence timing signal.
+        const passwordValid = await bcrypt.compare(password, account?.password_hash || officialLoginDummyHash);
+        if (!account || !passwordValid || account.id === SUPPORT_ID) return res.status(401).json(invalid);
+        if (REQUIRE_EMAIL_VERIFICATION && !account.email_verified) {
+            return res.status(403).json({ error: 'Сначала подтверди email.' });
+        }
+        const user = await getUser(account.id);
+        if (!user) return res.status(401).json(invalid);
+        return res.json({ token: issueToken(user.id), profile: publicProfile(user, user.id) });
+    } catch (error) {
+        console.error('Official number login:', error);
+        return res.status(500).json({ error: 'Не удалось войти. Попробуй позже.' });
+    }
+});
+

@@ -377,7 +377,12 @@
   window.myChatGetRtcConfig = async () => api('/api/rtc-config');
 
   function setAuthTab(tab) {
-    document.querySelectorAll('[data-auth-tab]').forEach(button => button.classList.toggle('active', button.dataset.authTab === tab));
+    document.querySelectorAll('[data-auth-tab]').forEach(button => {
+      const selected = button.dataset.authTab === tab;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-selected', String(selected));
+    });
+    $('official-login-form').classList.toggle('hidden', tab !== 'official');
     $('login-form').classList.toggle('hidden', tab !== 'login');
     $('register-form').classList.toggle('hidden', tab !== 'register');
     $('phone-login-form').classList.toggle('hidden', tab !== 'phone');
@@ -564,6 +569,28 @@
       const button = $('login-form').querySelector('button[type="submit"]');
       button.disabled = false;
       button.innerHTML = 'Войти <span>→</span>';
+    }
+  });
+
+  $('official-login-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = $('official-login-form');
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Входим…';
+    try {
+      const officialNumber = $('official-login-number').value.trim().replace(/[\s().-]/g, '');
+      const password = $('official-login-password').value;
+      if (!/^\+888\d{8}$/.test(officialNumber)) {
+        throw new Error('Укажи номер в формате +888 и 8 цифр.');
+      }
+      await finishLogin(await api('/api/auth/official-login', 'POST', { officialNumber, password }));
+      $('official-login-password').value = '';
+    } catch (error) {
+      showToast(error.message || 'Не удалось войти по +888.', 'error');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = 'Войти по +888 <span class="button-arrow">→</span>';
     }
   });
 

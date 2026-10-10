@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src https: wss: http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self';">
   <meta name="theme-color" content="#17212b">
-  <title>BurmalpticajopaChat · v8.5.1</title>
-  <link rel="stylesheet" href="./styles.css?v=20261010v82">
+  <title>BurmalpticajopaChat · v8.5.6</title>
+  <link rel="stylesheet" href="./styles.css?v=20261010v856">
   <link rel="stylesheet" href="./interface-v3.css?v=20261010v82">
   <link rel="stylesheet" href="./mobile-profile-v4.css?v=20261010v82">
   <link rel="stylesheet" href="./official-numbers-v6.css?v=20261010v855">
@@ -41,7 +41,8 @@
         <p class="auth-description">Войди в аккаунт, чтобы продолжить общение.</p>
 <div class="auth-tabs" role="tablist" aria-label="Тип авторизации">
           <button class="auth-tab active" data-auth-tab="login" role="tab" aria-selected="true" type="button">Вход</button>
-          <button class="auth-tab" data-auth-tab="phone" role="tab" aria-selected="false" type="button">По номеру</button>
+          <button class="auth-tab" data-auth-tab="official" role="tab" aria-selected="false" type="button">Номер +888</button>
+          <button class="auth-tab" data-auth-tab="phone" role="tab" aria-selected="false" type="button">SMS</button>
           <button class="auth-tab" data-auth-tab="register" role="tab" aria-selected="false" type="button">Регистрация</button>
         </div>
 
@@ -53,6 +54,15 @@
           <button class="primary-button full-width" type="submit">Войти <span class="button-arrow">→</span></button>
         </form>
 
+
+        <form id="official-login-form" class="auth-form hidden">
+          <p class="hint official-login-hint">Вход по официальному номеру BurmalpticajopaChat. Номер должен быть уже подтверждён и привязан к твоему аккаунту. SMS не нужен.</p>
+          <label class="field-label" for="official-login-number">Официальный номер +888</label>
+          <div class="input-shell"><span class="input-prefix">#</span><input id="official-login-number" name="officialNumber" type="tel" inputmode="tel" autocomplete="off" maxlength="18" placeholder="+88812345678" required></div>
+          <label class="field-label" for="official-login-password">Пароль от аккаунта</label>
+          <div class="input-shell"><span class="field-leading-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><input id="official-login-password" name="password" type="password" autocomplete="current-password" required placeholder="Твой пароль"></div>
+          <button class="primary-button full-width" type="submit">Войти по +888 <span class="button-arrow">→</span></button>
+        </form>
 
         <form id="phone-login-form" class="auth-form hidden">
           <p class="hint">Для начала привяжи номер в настройках существующего аккаунта. После подтверждения можно входить по SMS.</p>
@@ -81,7 +91,7 @@
         </form>
         <p class="auth-footnote"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg> Соединение с сервером защищено. Никогда не передавай пароль другим людям.</p>
       </div>
-      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> v8.5.1</div>
+      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> v8.5.6</div>
     </section>
   </main>
 
@@ -330,7 +340,7 @@
     </section>
   </div>
   <script src="./browser-bridge.js?v=20261010v855"></script>
-  <script src="./renderer.js?v=20261010v855"></script>
+  <script src="./renderer.js?v=20261010v856"></script>
   <script src="./calls.js?v=20261010v82"></script>
   <script src="./mobile-ui.js?v=20261010v82"></script>
   <script src="./mobile-profile-v4.js?v=20261010v82"></script>
