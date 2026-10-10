@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src https: wss: http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self';">
   <meta name="theme-color" content="#17212b">
-  <title>BurmalpticajopaChat · v6.0</title>
-  <link rel="stylesheet" href="./styles.css?v=20261010v6">
-  <link rel="stylesheet" href="./interface-v3.css?v=20261010v6">
-  <link rel="stylesheet" href="./mobile-profile-v4.css?v=20261010v6">
-  <link rel="stylesheet" href="./official-numbers-v6.css?v=20261010v6">
+  <title>BurmalpticajopaChat · v7.0</title>
+  <link rel="stylesheet" href="./styles.css?v=20261010v7">
+  <link rel="stylesheet" href="./interface-v3.css?v=20261010v7">
+  <link rel="stylesheet" href="./mobile-profile-v4.css?v=20261010v7">
+  <link rel="stylesheet" href="./official-numbers-v6.css?v=20261010v7">
+  <link rel="stylesheet" href="./telegram-features-v7.css?v=20261010v7">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -73,7 +74,7 @@
         </form>
         <p class="auth-footnote"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg> Соединение с сервером защищено. Никогда не передавай пароль другим людям.</p>
       </div>
-      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> v6.0</div>
+      <div class="auth-version">BURMALPTICAJOPACHAT <span>•</span> v7.0</div>
     </section>
   </main>
 
@@ -93,7 +94,7 @@
 
     <aside class="sidebar">
       <header class="sidebar-header">
-        <div class="sidebar-heading"><p class="eyebrow">BURMALPTICAJOPACHAT · v6.0</p><h1>Сообщения</h1><div id="account-identity" class="account-identity" title="Аккаунт, под которым открыты чаты">Аккаунт: не выполнен вход</div></div>
+        <div class="sidebar-heading"><p class="eyebrow">BURMALPTICAJOPACHAT · v7.0</p><h1>Сообщения</h1><div id="account-identity" class="account-identity" title="Аккаунт, под которым открыты чаты">Аккаунт: не выполнен вход</div></div>
         <div class="mobile-top-actions"><button id="mobile-profile-button" class="icon-button header-tool" type="button" title="Мой профиль" aria-label="Мой профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button><button id="mobile-admin-button" class="icon-button header-tool hidden" type="button" title="Админ-панель" aria-label="Админ-панель"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></button><button id="mobile-settings-button" class="icon-button header-tool" type="button" title="Настройки" aria-label="Настройки"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.7.7-1.5-2.6 1.4-1.1a7.2 7.2 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.7-.7 1.5 2.6-1.4 1.1a7.2 7.2 0 0 1 0 2Z"/></svg></button></div>
         <button id="refresh-chats" class="icon-button header-tool" type="button" title="Обновить чаты" aria-label="Обновить чаты"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.8 10a7.5 7.5 0 0 1 12.8-3L20 12M4 17v-5h5m10.2 2a7.5 7.5 0 0 1-12.8 3L4 12"/></svg></button>
       </header>
@@ -141,9 +142,14 @@
         <div id="message-list" class="message-list"><div class="loading-label">Загрузка сообщений…</div></div>
         <form id="composer-form" class="composer">
           <div id="attachment-pending" class="attachment-pending hidden"><span id="attachment-pending-icon" class="pending-file-icon">＋</span><span id="attachment-pending-name" class="pending-file-name"></span><button id="attachment-remove" type="button" class="pending-file-remove" aria-label="Убрать файл">×</button></div>
+          <div id="reply-preview" class="v7-reply hidden"><span id="reply-preview-text"></span><button id="reply-cancel" type="button" aria-label="Отменить ответ">×</button></div>
+          <div id="media-preview" class="v7-media-preview hidden"></div>
+          <div id="voice-record-status" class="v7-record-status hidden" role="status"><span id="voice-record-time">● 00:00</span><button id="voice-record-cancel" type="button">Отменить запись</button></div>
           <div class="composer-inner">
             <button id="attach-button" class="attach-button" type="button" disabled aria-label="Прикрепить файл" title="Фото, видео или файл"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 11.1 12 20.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
             <input id="attachment-input" class="visually-hidden-input" type="file" accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx,.zip" />
+            <input id="gallery-input" class="visually-hidden-input" type="file" accept="image/*,video/*" multiple />
+            <button id="voice-record-button" class="v7-mic" type="button" aria-label="Записать голосовое сообщение" title="Нажми для записи, ещё раз для отправки">🎙</button>
             <textarea id="message-input" rows="1" maxlength="4000" placeholder="Сообщение…" disabled aria-label="Текст сообщения"></textarea>
             <button id="send-button" class="send-button" type="submit" disabled aria-label="Отправить сообщение" title="Отправить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.7 18-3.8-7.5L3 9.7z"/></svg></button>
           </div>
@@ -156,8 +162,11 @@
       <div class="modal-card">
         <button id="close-settings" class="modal-close" type="button" aria-label="Закрыть">×</button>
         <p class="eyebrow">ПРИВАТНОСТЬ</p><h2 id="settings-title">Телефон и безопасность</h2>
-        <p class="modal-description">Номер телефона не показывается другим пользователям, пока ты сам не разрешишь.</p>
+        <p class="modal-description">Обычный номер скрыт по умолчанию. Официальный +888 виден всем и заменяет обычный номер в профиле.</p>
         <div class="phone-current"><strong>Мой номер</strong><span id="current-phone">Не привязан</span></div>
+        <label class="field-label" for="call-privacy">Кто может мне звонить</label>
+        <select class="plain-field" id="call-privacy"><option value="everyone">Все пользователи</option><option value="contacts">Мои собеседники</option><option value="nobody">Никто</option></select>
+        <button type="button" class="secondary-button full-width" id="save-call-privacy">Сохранить приватность звонков</button>
         <label class="phone-privacy-check"><input id="phone-visible" type="checkbox"> Показывать мой номер другим пользователям</label>
         <button id="save-phone-privacy" class="secondary-button full-width" type="button">Сохранить видимость</button>
         <div class="phone-link-block">
@@ -171,7 +180,7 @@
           <button id="phone-link-confirm" class="primary-button full-width" type="button">Подтвердить номер</button>
         </div>
         <section id="official-number-panel" class="official-box" aria-labelledby="official-title">
-          <div class="official-title-row"><span class="official-mark">✦</span><div><h3 id="official-title">Официальный номер +888</h3><p>Внутренний приватный номер BurmalpticajopaChat, а не номер для SMS или сотовой связи.</p></div></div>
+          <div class="official-title-row"><span class="official-mark">✦</span><div><h3 id="official-title">Официальный номер +888</h3><p>Видимый всем внутренний номер BurmalpticajopaChat. Заменяет обычный номер в профиле, но не принимает SMS и обычные звонки.</p></div></div>
           <div id="official-my-number" class="official-my-number hidden"></div>
           <button id="official-open-purchase" type="button" class="secondary-button full-width">Купить официальный номер +888</button>
           <div id="official-request-panel" class="hidden">
@@ -252,6 +261,15 @@
       </div>
     </div>
 
+    <div id="v7-attach-sheet" class="v7-sheet hidden" role="dialog" aria-modal="true" aria-label="Прикрепить файл">
+      <div class="v7-sheet-backdrop" data-v7-sheet-close></div>
+      <div class="v7-sheet-content"><div class="v7-sheet-handle"></div><div class="v7-sheet-title">Прикрепить</div>
+        <div class="v7-sheet-options">
+          <button id="v7-pick-gallery" type="button"><span>▧</span> Галерея <small>Фото и видео, несколько файлов</small></button>
+          <button id="v7-pick-file" type="button"><span>▤</span> Файл <small>Документ, архив, аудио</small></button>
+        </div><div class="v7-sheet-note">Откроется галерея Android или системный выбор файлов. Выбранные медиа появятся для предпросмотра.</div>
+      </div></div>
+    <div id="v7-message-menu" class="v7-context hidden" role="dialog" aria-label="Действия с сообщением"></div>
     <div id="media-viewer" class="media-viewer hidden" role="dialog" aria-modal="true" aria-label="Просмотр файла">
       <button id="media-viewer-close" class="media-viewer-close" type="button" aria-label="Закрыть просмотр">×</button>
       <div id="media-viewer-stage" class="media-viewer-stage"><img id="media-viewer-image" class="hidden" alt="Изображение из переписки"/><video id="media-viewer-video" class="hidden" controls playsinline></video></div>
@@ -274,11 +292,11 @@
       <div class="call-controls"><button id="muteCallButton" class="call-control" type="button" aria-label="Микрофон" aria-pressed="false">🎙</button><button id="cameraCallButton" class="call-control hidden" type="button" aria-label="Камера" aria-pressed="false">📷</button><button id="hangupCallButton" class="call-control hangup" type="button" aria-label="Завершить звонок">☎</button></div>
     </section>
   </div>
-  <script src="./browser-bridge.js?v=20261010v6"></script>
-  <script src="./renderer.js?v=20261010v6"></script>
-  <script src="./calls.js?v=20261010v6"></script>
-  <script src="./mobile-ui.js?v=20261010v6"></script>
-  <script src="./mobile-profile-v4.js?v=20261010v6"></script>
-  <script src="./official-numbers-v6.js?v=20261010v6"></script>
+  <script src="./browser-bridge.js?v=20261010v7"></script>
+  <script src="./renderer.js?v=20261010v7"></script>
+  <script src="./calls.js?v=20261010v7"></script>
+  <script src="./mobile-ui.js?v=20261010v7"></script>
+  <script src="./mobile-profile-v4.js?v=20261010v7"></script>
+  <script src="./official-numbers-v6.js?v=20261010v7"></script>
 </body>
 </html>

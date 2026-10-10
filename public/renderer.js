@@ -22,6 +22,9 @@
     searchTimer: null,
     isSending: false,
     pendingAttachment: null,
+    pendingFiles: [],
+    replyTo: null,
+    voiceRecorder: null,
     pendingAvatarFile: null,
     pendingAvatarObjectUrl: null,
     avatarRevisionById: new Map()
@@ -236,6 +239,8 @@
 
   function setPendingAttachment(file) {
     state.pendingAttachment = file || null;
+    state.pendingFiles = file ? [file] : [];
+    drawMediaPreviews();
     const row = $('attachment-pending');
     if (!file) {
       row.classList.add('hidden');
@@ -250,6 +255,37 @@
 
   // Shared bridge used by the WebRTC call module. No Node.js APIs are exposed.
   window.myChatGetCurrentUser = () => state.selectedUser;
+  const filePreviews = [];
+  function clearPreviewUrls() {for (const url of filePreviews.splice(0)) URL.revokeObjectURL(url);}
+  function drawMediaPreviews() {
+    clearPreviewUrls();
+    const list = $('media-preview'); if(!list) return;
+    list.replaceChildren();
+    const files = state.pendingFiles || [];
+    list.classList.toggle('hidden',files.length===0);
+    if (!files.length) return;
+    files.forEach((file,index)=>{
+      const tile=document.createElement('div');tile.className='v7-preview-tile';
+      if(file.type.startsWith('image/')){const im=document.createElement('img'); const url=URL.createObjectURL(file); filePreviews.push(url);im.src=url;im.alt=file.name;tile.append(im);}
+      else if(file.type.startsWith('video/')){const v=document.createElement('video'); const url=URL.createObjectURL(file);filePreviews.push(url);v.src=url;v.muted=true;v.preload='metadata';tile.append(v);}
+      else {const ico=document.createElement('span');ico.textContent=file.type.startsWith('audio/')?'♫':'▤';tile.append(ico);}
+      const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Убрать '+file.name;
+      remove.addEventListener('click',()=>{state.pendingFiles.splice(index,1);state.pendingAttachment=state.pendingFiles[0]||null;drawMediaPreviews(); $('attachment-pending').classList.toggle('hidden',!!state.pendingFiles.length||!state.pendingAttachment);});
+      const label=document.createElement('small');label.textContent=file.name;tile.append(remove,label);list.append(tile);
+    });
+  }
+  function selectFiles(files) {
+    const chosen=Array.from(files||[]);
+    if(!chosen.length)return;
+    if(chosen.length>10){showToast('Можно отправить до 10 файлов за раз.','error');return;}
+    if(chosen.some(f=>f.size>15*1024*1024)){showToast('Один файл может быть не больше 15 МБ.','error');return;}
+    state.pendingFiles=chosen;state.pendingAttachment=chosen[0];
+    $('attachment-pending').classList.add('hidden');drawMediaPreviews();sendButton.disabled=false;
+  }
+  function updateCallActions() {
+    const isSupport=state.selectedUser?.id==='bpc-official-support';
+    ['voiceCallButton','videoCallButton'].forEach(id=>{const button=$(id);if(button){button.disabled=isSupport;button.classList.toggle('hidden',isSupport);}});
+  }
   window.myChatGetProfile = () => state.profile;
   // Refresh the mobile profile immediately after the +888 claim is confirmed.
   window.addEventListener('burmal:official-number-linked', async () => {
@@ -442,6 +478,11 @@
         case 'message':
           if (data.message) handleIncomingMessage(data.message);
           break;
+        case 'reaction':
+          {const changed=state.messages.find(m=>m.id===data.messageId);if(changed){changed.reactions=data.reactions||[];renderMessages(true);}}
+          break;
+        case 'message_hidden':
+          state.messages=state.messages.filter(m=>m.id!==data.messageId);renderMessages(true);break;
         case 'chat_refresh':
           loadChats().catch(() => {});
           break;
@@ -659,6 +700,7 @@
     $('chat-name').textContent = state.selectedUser.displayName || state.selectedUser.username || 'Пользователь';
     $('chat-status').textContent = state.selectedUser.id === 'bpc-official-support' ? 'Служебный чат · только уведомления' : (state.selectedUser.online ? 'в сети' : 'не в сети');
     $('chat-verified').classList.toggle('hidden', !state.selectedUser.verified);
+    updateCallActions();
   }
   async function loadMessages(user, keepScroll = true) {
     const before = state.selectedUser?.id;
@@ -698,6 +740,9 @@
         item.append(author);
       }
       const bubble = document.createElement('div'); bubble.className = 'message-bubble';
+      bubble.setAttribute('data-message-id',message.id);
+      if(message.replyTo){const quote=document.createElement('div');quote.className='v7-quote';quote.textContent=`↳ ${message.replyTo.username||'Пользователь'}: ${message.replyTo.text||'Вложение'}`;bubble.append(quote);}
+      if(message.forwarded){const fw=document.createElement('div');fw.className='v7-forwarded';fw.textContent='➜ Пересланное сообщение';bubble.append(fw);}
       if (message.deleted) {
         bubble.textContent = 'Сообщение удалено';
       } else {
@@ -710,6 +755,13 @@
         if (message.attachment) bubble.append(renderAttachment(message.attachment));
         if (!message.text && !message.attachment) bubble.textContent = 'Сообщение';
       }
+      if(Array.isArray(message.reactions)&&message.reactions.length){
+        const reactions=document.createElement('div');reactions.className='v7-reactions';
+        const grouped=new Map();for(const rr of message.reactions)grouped.set(rr.emoji,(grouped.get(rr.emoji)||0)+1);
+        for(const [emoji,count] of grouped){const b=document.createElement('button');b.type='button';b.textContent=`${emoji} ${count}`;b.className='v7-reaction';b.addEventListener('click',()=>changeReaction(message,emoji));reactions.append(b);}
+        bubble.append(reactions);
+      }
+      enableMessageMenu(item,message);
       item.append(bubble);
       const meta = document.createElement('div'); meta.className = 'message-meta';
       const time = document.createElement('span'); time.textContent = timeLabel(message.createdAt);
@@ -725,7 +777,9 @@
   }
   function handleIncomingMessage(message) {
     if (state.selectedUser && state.selectedConversationId && message.conversationId === state.selectedConversationId) {
-      if (!state.messages.some(item => item.id === message.id)) {
+      const existingIndex=state.messages.findIndex(item => item.id === message.id);
+      if (existingIndex>=0) {state.messages[existingIndex]=message;renderMessages(true);}
+      else {
         state.messages.push(message);
         state.messages.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
         renderMessages(true);
@@ -737,9 +791,79 @@
     loadChats().catch(() => {});
   }
 
+  function clearReply(){state.replyTo=null;$('reply-preview').classList.add('hidden');$('reply-preview-text').textContent='';}
+  $('reply-cancel').addEventListener('click',clearReply);
+  function setReply(message){state.replyTo=message;$('reply-preview-text').textContent=`Ответ ${message.senderUsername||''}: ${(message.text||'Вложение').slice(0,100)}`;$('reply-preview').classList.remove('hidden');messageInput.focus();}
+  const msgMenu=$('v7-message-menu');
+  function closeMessageMenu(){msgMenu.classList.add('hidden');msgMenu.replaceChildren();}
+  document.addEventListener('pointerdown',e=>{if(!msgMenu.contains(e.target) && !e.target.closest('.message'))closeMessageMenu();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMessageMenu();});
+  async function changeReaction(message,emoji){try {const result=await api(`/api/messages/${encodeURIComponent(message.id)}/reactions`,'POST',{emoji});message.reactions=result.reactions||[];renderMessages(true);}catch(err){showToast(err.message,'error');}closeMessageMenu();}
+  function menuButton(text,onClick,danger=false){const b=document.createElement('button');b.type='button';b.textContent=text;b.className='v7-menu-option'+(danger?' danger':'');b.addEventListener('click',async()=>{closeMessageMenu();try{await onClick();}catch(err){showToast(err.message||'Ошибка операции','error');}});msgMenu.append(b);}
+  function openMessageMenu(message){
+    closeMessageMenu();msgMenu.classList.remove('hidden');
+    const emojis=document.createElement('div');emojis.className='v7-emoji-row';
+    for(const emoji of ['👍','❤️','😂','🔥','😮','😢','👏']){const b=document.createElement('button');b.type='button';b.textContent=emoji;b.addEventListener('click',()=>changeReaction(message,emoji));emojis.append(b);}msgMenu.append(emojis);
+    menuButton('↩ Ответить',()=>setReply(message));
+    menuButton('➜ Переслать',()=>showForwardPicker(message));
+    if(message.text && !message.deleted)menuButton('▣ Скопировать',async()=>{await navigator.clipboard.writeText(message.text);showToast('Текст скопирован','success');});
+    menuButton('⌫ Удалить у себя',async()=>{await api(`/api/messages/${encodeURIComponent(message.id)}/hide`,'POST');state.messages=state.messages.filter(m=>m.id!==message.id);renderMessages(true);},true);
+    if(message.senderId===state.profile?.id&&!message.deleted)menuButton('✕ Удалить у обоих',async()=>{if(!confirm('Удалить сообщение у обоих участников?'))return;const response=await api(`/api/messages/${encodeURIComponent(message.id)}`,'DELETE');const i=state.messages.findIndex(m=>m.id===message.id);if(i>=0){state.messages[i]=response.message;renderMessages(true);}},true);
+    msgMenu.classList.remove('hidden');
+  }
+  function enableMessageMenu(item,message){
+    let timer=0,startX=0,startY=0,opened=false;
+    item.addEventListener('contextmenu',e=>{e.preventDefault();openMessageMenu(message);});
+    item.addEventListener('touchstart',e=>{opened=false;startX=e.touches[0]?.clientX||0;startY=e.touches[0]?.clientY||0;clearTimeout(timer);timer=setTimeout(()=>{opened=true;openMessageMenu(message);navigator.vibrate?.(12);},560);},{passive:true});
+    item.addEventListener('touchmove',e=>{if(Math.abs((e.touches[0]?.clientX||0)-startX)>12||Math.abs((e.touches[0]?.clientY||0)-startY)>12)clearTimeout(timer);},{passive:true});
+    ['touchend','touchcancel'].forEach(t=>item.addEventListener(t,()=>clearTimeout(timer),{passive:true}));
+    item.addEventListener('click',e=>{if(opened){e.preventDefault();e.stopPropagation();opened=false;}},true);
+  }
+  function showForwardPicker(message){
+    closeMessageMenu();msgMenu.classList.remove('hidden');
+    const title=document.createElement('h3');title.textContent='Переслать в чат';msgMenu.append(title);
+    const chats=state.chats.filter(ch=>ch.user?.id&&ch.user.id!=='bpc-official-support');
+    if(!chats.length){msgMenu.append('Нет других чатов');return;}
+    chats.forEach(ch=>menuButton(ch.user.displayName||'@'+ch.user.username,async()=>{await api(`/api/messages/${encodeURIComponent(message.id)}/forward`,'POST',{toUserId:ch.user.id});showToast('Сообщение переслано','success');}));
+    menuButton('Отмена',()=>{});
+  }
+  let recordingStream=null,recordingChunks=[],recordingStart=0,recordingLimit=0;
+  const mic=$('voice-record-button');
+  function resetRecorderUi(){mic.classList.remove('recording');mic.textContent='🎙';$('voice-record-status').classList.add('hidden');clearInterval(recordingLimit);recordingLimit=0;}
+  async function stopRecording(sendIt=true){
+    const rec=state.voiceRecorder;if(!rec)return;
+    state.voiceRecorder=null;
+    rec.onstop=async()=>{
+      recordingStream?.getTracks().forEach(t=>t.stop());recordingStream=null;resetRecorderUi();
+      if(!sendIt||!recordingChunks.length)return;
+      const type=rec.mimeType||'audio/webm';const blob=new Blob(recordingChunks,{type});recordingChunks=[];
+      if(blob.size>15*1024*1024){showToast('Голосовое сообщение слишком большое','error');return;}
+      const ext=type.includes('mp4')?'m4a':type.includes('ogg')?'ogg':'webm';
+      selectFiles([new File([blob],`voice-${Date.now()}.${ext}`,{type})]);
+      $('composer-form').requestSubmit();
+    };
+    if(rec.state!=='inactive')rec.stop();else {recordingStream?.getTracks().forEach(t=>t.stop());resetRecorderUi();}
+  }
+  mic.addEventListener('click',async()=>{
+    if(state.voiceRecorder){await stopRecording(true);return;}
+    if(!state.selectedUser||state.selectedUser.id==='bpc-official-support'){showToast('Сначала открой обычный чат','error');return;}
+    if(!state.socketReady){showToast('Нет подключения','error');return;}
+    if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){showToast('Запись аудио не поддерживается этим устройством','error');return;}
+    try{
+      recordingStream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime=['audio/webm;codecs=opus','audio/mp4','audio/webm','audio/ogg'].find(v=>MediaRecorder.isTypeSupported(v));
+      const rec=mime?new MediaRecorder(recordingStream,{mimeType:mime}):new MediaRecorder(recordingStream);
+      state.voiceRecorder=rec;recordingChunks=[];recordingStart=Date.now();
+      rec.ondataavailable=e=>{if(e.data?.size)recordingChunks.push(e.data);};
+      rec.onerror=()=>{stopRecording(false);showToast('Ошибка записи звука','error');};
+      rec.start();mic.classList.add('recording');mic.textContent='■';$('voice-record-status').classList.remove('hidden');
+      recordingLimit=setInterval(()=>{const sec=Math.floor((Date.now()-recordingStart)/1000);$('voice-record-time').textContent=`● ${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;if(sec>=60)stopRecording(true);},250);
+    }catch(err){recordingStream?.getTracks().forEach(t=>t.stop());recordingStream=null;showToast('Разреши доступ к микрофону: '+(err.message||err.name),'error');resetRecorderUi();}
+  });
+  $('voice-record-cancel').addEventListener('click',()=>stopRecording(false));
   $('attach-button').addEventListener('click', () => {
     if (!state.selectedUser) return showToast('Сначала открой чат.', 'error');
-    $('attachment-input').click();
+    $('v7-attach-sheet').classList.remove('hidden');
   });
   $('attachment-input').addEventListener('change', () => {
     const file = $('attachment-input').files?.[0] || null;
@@ -749,8 +873,12 @@
       showToast('Максимальный размер файла — 15 МБ.', 'error');
       return;
     }
-    setPendingAttachment(file);
+    selectFiles(file ? [file] : []);
   });
+  $('gallery-input').addEventListener('change',()=>{selectFiles($('gallery-input').files);$('gallery-input').value='';});
+  $('v7-pick-gallery').addEventListener('click',()=>{$('v7-attach-sheet').classList.add('hidden');$('gallery-input').click();});
+  $('v7-pick-file').addEventListener('click',()=>{$('v7-attach-sheet').classList.add('hidden');$('attachment-input').click();});
+  document.querySelector('[data-v7-sheet-close]').addEventListener('click',()=> $('v7-attach-sheet').classList.add('hidden'));
   $('attachment-remove').addEventListener('click', () => {
     $('attachment-input').value = '';
     setPendingAttachment(null);
@@ -759,45 +887,32 @@
   $('composer-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const text = messageInput.value.trim();
-    const file = state.pendingAttachment;
-    if ((!text && !file) || !state.selectedUser) return;
+    const files = [...(state.pendingFiles || [])];
+    if ((!text && !files.length) || !state.selectedUser) return;
     if (!state.socketReady || !state.socket || state.socket.readyState !== WebSocket.OPEN) {
-      showToast('Нет соединения с сервером. Подожди переподключения.', 'error');
-      return;
+      showToast('Нет соединения с сервером. Подожди переподключения.', 'error'); return;
     }
     if (state.isSending) return;
-    state.isSending = true;
-    sendButton.disabled = true;
-    $('attach-button').disabled = true;
+    state.isSending = true;sendButton.disabled = true;$('attach-button').disabled = true;
     try {
-      let attachmentId = null;
-      if (file) {
-        showToast('Загружаю вложение…');
-        const result = await uploadFile('/api/upload', 'file', file);
-        attachmentId = result.attachment?.id;
-        if (!attachmentId) throw new Error('Сервер не вернул ID загруженного файла.');
+      const entries=files.length?files:[null];
+      for(let i=0;i<entries.length;i++) {
+        const file=entries[i];let attachmentId=null;
+        if(file){showToast(`Загружаю ${i+1} из ${entries.length}…`);const uploaded=await uploadFile('/api/upload','file',file);attachmentId=uploaded.attachment?.id;if(!attachmentId)throw new Error('Сервер не вернул ID файла.');}
+        if(!state.socketReady||state.socket.readyState!==WebSocket.OPEN)throw new Error('Соединение потеряно во время отправки.');
+        state.socket.send(JSON.stringify({type:'send',toUserId:state.selectedUser.id,
+          text:i===0?text:'', attachmentId,
+          replyToId:i===0?state.replyTo?.id||null:null,
+          clientMessageId:(typeof crypto.randomUUID==='function')?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`}));
       }
-      if (!state.socketReady || !state.socket || state.socket.readyState !== WebSocket.OPEN) {
-        throw new Error('Соединение потеряно во время загрузки файла. Нажми отправить ещё раз.');
-      }
-      const payload = {
-        type: 'send',
-        toUserId: state.selectedUser.id,
-        text,
-        attachmentId,
-        replyToId: null,
-        clientMessageId: (typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-      };
-      state.socket.send(JSON.stringify(payload));
-      messageInput.value = '';
-      messageInput.style.height = 'auto';
-      $('attachment-input').value = '';
-      setPendingAttachment(null);
+      messageInput.value='';messageInput.style.height='auto';
+      $('attachment-input').value='';state.pendingFiles=[];state.pendingAttachment=null;
+      drawMediaPreviews();$('attachment-pending').classList.add('hidden');clearReply();
     } catch (error) {
       showToast(error.message || 'Не удалось отправить сообщение.', 'error');
     } finally {
       state.isSending = false;
-      sendButton.disabled = !state.socketReady || !state.selectedUser || (!messageInput.value.trim() && !state.pendingAttachment);
+      sendButton.disabled = !state.socketReady || !state.selectedUser || (!messageInput.value.trim() && !(state.pendingFiles||[]).length);
       $('attach-button').disabled = !state.socketReady || !state.selectedUser;
     }
   });
@@ -850,9 +965,10 @@
   function showPhoneSettings() {
     if (!state.profile) return;
     $('current-phone').textContent = state.profile.phone || 'Не привязан';
-    $('phone-link-number').value = state.profile.phone || '';
+    $('phone-link-number').value = state.profile.linkedPhone || (state.profile.officialNumber ? '' : state.profile.phone) || '';
     $('phone-visible').checked = Boolean(state.profile.phoneVisible);
-    $('phone-visible').disabled = !state.profile.phoneVerified;
+    $('phone-visible').disabled = !state.profile.phoneVerified || Boolean(state.profile.officialNumber);
+    $('call-privacy').value=state.profile.callPrivacy||'everyone';
     $('settings-modal').classList.remove('hidden');
   }
   $('settings-button').addEventListener('click', showPhoneSettings);
@@ -897,6 +1013,17 @@
     });
   });
 
+  function updateCallPrivacy(){const selector=$('call-privacy');if(selector)selector.value=state.profile?.callPrivacy||'everyone';}
+  $('settings-button').addEventListener('click',updateCallPrivacy);
+  $('mobile-settings-button').addEventListener('click',updateCallPrivacy);
+  $('save-call-privacy').addEventListener('click',async()=>{
+    const priv=$('call-privacy').value;
+    try{const current=state.profile||{};const response=await api('/api/profile','PATCH',{
+      username:current.username,displayName:current.displayName,bio:current.bio||'',avatarColor:current.avatarColor,
+      presenceStatus:current.presenceStatus,privacyOnline:current.privacyOnline,phoneVisible:current.phoneVisible,callPrivacy:priv});
+      state.profile=response.profile||state.profile;updateSelfProfile();showToast('Приватность звонков сохранена','success');
+    }catch(err){showToast(err.message||'Не удалось сохранить','error');}
+  });
   let viewedProfile = null;
   async function viewUserProfile(user) {
     if (!user?.id) return;
@@ -909,7 +1036,8 @@
       $('other-profile-verified').classList.toggle('hidden', !viewedProfile.verified);
       $('other-profile-bio').textContent = viewedProfile.bio || 'Описание не указано';
       $('other-profile-phone-row').classList.toggle('hidden', !viewedProfile.phone);
-      $('other-profile-phone').textContent = viewedProfile.phone || '';
+      $('other-profile-phone').textContent = viewedProfile.officialNumber || viewedProfile.phone || '';
+      $('other-profile-phone-row').querySelector('small').textContent = viewedProfile.officialNumber ? 'Официальный номер +888' : 'Номер телефона';
       $('other-profile-modal').classList.remove('hidden');
     } catch (error) { showToast(error.message || 'Не удалось открыть профиль.', 'error'); }
   }

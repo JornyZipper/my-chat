@@ -32,7 +32,7 @@
     $('official-confirm-panel').classList.toggle('hidden',!(!number&&request?.status==='approved'));
     $('official-cancel').classList.toggle('hidden',request?.status!=='pending');
     $('official-confirm-number').value=request?.number||'';
-    message(number?'✓ Официальный номер активирован. Видишь его только ты.':
+    message(number?'✓ Официальный номер активирован и виден всем пользователям.':
       request?`${request.number}: ${labelMap[request.status]||request.status}.`:'Нажми «Купить официальный номер», выбери 8 цифр и отправь запрос владельцу @Z1pperJ. Оплата и условия согласуются напрямую с владельцем, автоматического списания нет.');
     btn.disabled=!/^\d{8}$/.test(digits.value)||Boolean(number||waiting);
   }

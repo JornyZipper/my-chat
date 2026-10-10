@@ -294,6 +294,7 @@
   async function startCall(video = false) {
     const user = getCurrentUser();
     if (!user?.id) { toast('Сначала открой чат с пользователем.'); return; }
+    if (user.id === 'bpc-official-support') { toast('В поддержку нельзя звонить.'); return; }
     if (currentCall || incomingCall) { toast('Звонок уже выполняется.'); return; }
     if (!isConnected()) { toast('Нет соединения с сервером. Подожди подключения и повтори.'); return; }
     if (!window.RTCPeerConnection) { toast('WebRTC не поддерживается в этом браузере.'); return; }

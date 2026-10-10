@@ -106,9 +106,10 @@ function publicProfile(row, viewerId = null) {
         avatarUrl: row.avatar_data ? `/api/avatar/${row.id}` : '',
         avatarColor: row.avatar_color || '#3390ec',
         createdAt: row.created_at,
-        phone: row.phone_verified && (viewerId === row.id || row.phone_visible) ? (row.phone_e164 || '') : '',
+        phone: row.official_number || (row.phone_verified && (viewerId === row.id || row.phone_visible) ? (row.phone_e164 || '') : ''),
+        officialNumber: row.official_number || '',
         hasOfficialNumber: Boolean(row.official_number),
-        ...(viewerId === row.id ? { officialNumber: row.official_number || '' } : {}),
+        ...(viewerId === row.id ? { linkedPhone: row.phone_verified ? (row.phone_e164 || '') : '', callPrivacy: row.call_privacy || 'everyone' } : {}),
         ...(viewerId === row.id ? { phoneVisible: Boolean(row.phone_visible), phoneVerified: Boolean(row.phone_verified) } : {})
     };
 }
@@ -158,7 +159,7 @@ async function blockedBetween(a, b) {
 async function getUser(idValue) {
     const { rows } = await pool.query(
         `SELECT id,username,username_norm,display_name,password_hash,email,email_verified,
-                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number
+                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number,call_privacy
          FROM users WHERE id=$1`,
         [idValue]
     );
@@ -167,7 +168,7 @@ async function getUser(idValue) {
 async function getUserByUsername(username) {
     const { rows } = await pool.query(
         `SELECT id,username,username_norm,display_name,password_hash,email,email_verified,
-                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number
+                avatar_data,avatar_mime,avatar_color,bio,presence_status,privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number,call_privacy
          FROM users WHERE username_norm=$1`,
         [norm(username)]
     );
@@ -212,7 +213,7 @@ async function ensureDirectConversation(a, b) {
 async function broadcastPresence() {
     const { rows } = await pool.query(
         `SELECT id,username,display_name,avatar_data,bio,presence_status,
-                privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number
+                privacy_online,verified_badge,created_at,phone_e164,phone_visible,phone_verified,official_number,call_privacy
          FROM users ORDER BY username_norm`
     );
     for (const userId of onlineSockets.keys()) {
@@ -270,7 +271,10 @@ async function messagePayload(messageId) {
 }
 async function broadcastMessageToConversation(conversationId, message) {
     const { rows } = await pool.query('SELECT user_id FROM conversation_members WHERE conversation_id=$1', [conversationId]);
-    for (const row of rows) sendToUser(row.user_id, { type: 'message', message });
+    for (const row of rows) {
+        const hidden=await pool.query('SELECT 1 FROM message_hidden_for WHERE message_id=$1 AND user_id=$2',[message.id,row.user_id]);
+        if(!hidden.rowCount)sendToUser(row.user_id,{type:'message',message});
+    }
 }
 function authMiddleware(req, res, next) {
     const header = req.get('authorization') || '';
@@ -974,6 +978,8 @@ app.patch('/api/profile', authMiddleware, async (req, res) => {
             ? req.body.presenceStatus : user.presence_status;
         const privacyOnline = ['everyone','nobody'].includes(req.body.privacyOnline)
             ? req.body.privacyOnline : user.privacy_online;
+        const callPrivacy = ['everyone','contacts','nobody'].includes(req.body.callPrivacy)
+            ? req.body.callPrivacy : (user.call_privacy || 'everyone');
         if (!validUsername(username)) return res.status(400).json({ error: 'Неверный username.' });
         if (norm(username) === SUPPORT_NORM) return res.status(403).json({ error: 'Это имя зарезервировано для поддержки.' });
         if (!displayName) return res.status(400).json({ error: 'Имя не может быть пустым.' });
@@ -989,8 +995,8 @@ app.patch('/api/profile', authMiddleware, async (req, res) => {
         // CRITICAL: never overwrite verified_badge when saving profile settings.
         await pool.query(
             `UPDATE users SET username=$1,username_norm=$2,display_name=$3,bio=$4,
-             presence_status=$5,privacy_online=$6,avatar_color=$7,phone_visible=$9 WHERE id=$8`,
-            [username, norm(username), displayName, bio, presenceStatus, privacyOnline, avatarColor, req.userId, Boolean(req.body.phoneVisible === undefined ? user.phone_visible : req.body.phoneVisible === true)]
+             presence_status=$5,privacy_online=$6,avatar_color=$7,phone_visible=$9,call_privacy=$10 WHERE id=$8`,
+            [username, norm(username), displayName, bio, presenceStatus, privacyOnline, avatarColor, req.userId, Boolean(req.body.phoneVisible === undefined ? user.phone_visible : req.body.phoneVisible === true), callPrivacy]
         );
         const updated = await getUser(req.userId);
         res.json({ profile: publicProfile(updated, req.userId) });
@@ -1081,14 +1087,16 @@ app.get('/api/chats', authMiddleware, async (req, res) => {
                     cm1.pinned,cm1.muted,
                     lm.id AS last_message_id,lm.text AS last_text,lm.created_at AS last_time,lm.sender_id AS last_sender_id,
                     (SELECT COUNT(*) FROM messages um
-                     WHERE um.conversation_id=c.id AND um.sender_id=u.id AND um.read_at IS NULL AND um.deleted_at IS NULL) AS unread
+                     WHERE um.conversation_id=c.id AND um.sender_id=u.id AND um.read_at IS NULL AND um.deleted_at IS NULL
+                     AND NOT EXISTS(SELECT 1 FROM message_hidden_for h WHERE h.message_id=um.id AND h.user_id=$1)) AS unread
              FROM conversations c
              JOIN conversation_members cm1 ON cm1.conversation_id=c.id AND cm1.user_id=$1
              JOIN conversation_members cm2 ON cm2.conversation_id=c.id AND cm2.user_id<>$1
              JOIN users u ON u.id=cm2.user_id
              LEFT JOIN LATERAL (
                  SELECT id,text,created_at,sender_id FROM messages
-                 WHERE conversation_id=c.id ORDER BY created_at DESC LIMIT 1
+                 WHERE conversation_id=c.id AND NOT EXISTS(SELECT 1 FROM message_hidden_for h WHERE h.message_id=messages.id AND h.user_id=$1)
+                 ORDER BY created_at DESC LIMIT 1
              ) lm ON TRUE
              ORDER BY cm1.pinned DESC,lm.created_at DESC NULLS LAST`, [req.userId]
         );
@@ -1120,9 +1128,9 @@ app.get('/api/chats/:userId/messages', authMiddleware, async (req, res) => {
             type: 'receipts', kind: 'delivered', messageIds: delivered.rows.map(row => row.id)
         });
         const search = clean(req.query.search, 100);
-        const params = [conversationId];
-        let where = 'm.conversation_id=$1';
-        if (search) { params.push(`%${search}%`); where += ' AND m.text ILIKE $2'; }
+        const params = [conversationId,req.userId];
+        let where = 'm.conversation_id=$1 AND NOT EXISTS(SELECT 1 FROM message_hidden_for hf WHERE hf.message_id=m.id AND hf.user_id=$2)';
+        if (search) { params.push(`%${search}%`); where += ' AND m.text ILIKE $3'; }
         const { rows } = await pool.query(
             `SELECT m.id,m.conversation_id,m.sender_id,m.text,m.created_at,m.edited_at,m.deleted_at,
                     m.delivered_at,m.read_at,m.reply_to_id,m.forwarded_from_id,
@@ -1235,6 +1243,19 @@ app.patch('/api/messages/:id', authMiddleware, async (req, res) => {
         res.json({ message: payload });
     } catch { res.status(500).json({ error: 'Не удалось изменить сообщение.' }); }
 });
+// Delete for me: only changes current user's view, never the other participant's history.
+app.post('/api/messages/:id/hide', authMiddleware, async (req,res) => {
+    try {
+        const { rows }=await pool.query(`SELECT m.id,m.conversation_id FROM messages m
+          JOIN conversation_members cm ON cm.conversation_id=m.conversation_id AND cm.user_id=$2
+          WHERE m.id=$1`,[req.params.id,req.userId]);
+        if(!rows[0])return res.status(404).json({error:'Сообщение не найдено.'});
+        await pool.query('INSERT INTO message_hidden_for(message_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[req.params.id,req.userId]);
+        sendToUser(req.userId,{type:'message_hidden',messageId:req.params.id});
+        sendToUser(req.userId,{type:'chat_refresh'});
+        res.json({ok:true});
+    }catch(err){console.error('Hide message:',err);res.status(500).json({error:'Не удалось скрыть сообщение.'});}
+});
 app.delete('/api/messages/:id', authMiddleware, async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT conversation_id FROM messages WHERE id=$1 AND sender_id=$2',
@@ -1250,6 +1271,7 @@ app.delete('/api/messages/:id', authMiddleware, async (req, res) => {
 app.post('/api/messages/:id/reactions', authMiddleware, async (req, res) => {
     try {
         const emoji = clean(req.body.emoji, 8);
+        if(!['👍','❤️','😂','🔥','😮','😢','👏','👎'].includes(emoji))return res.status(400).json({error:'Недопустимая реакция.'});
         const { rows } = await pool.query(
             `SELECT m.id,m.conversation_id FROM messages m
              JOIN conversation_members cm ON cm.conversation_id=m.conversation_id AND cm.user_id=$2
@@ -1284,6 +1306,7 @@ app.post('/api/messages/:id/forward', authMiddleware, async (req, res) => {
         }
         if (source.deleted_at) return res.status(400).json({ error: 'Сообщение удалено.' });
         if (!targetId || targetId === req.userId) return res.status(400).json({ error: 'Укажи другого получателя.' });
+        if (targetId === SUPPORT_ID) return res.status(403).json({error:'Поддержка принимает только служебные сообщения.'});
         const target = await getUser(targetId);
         if (!target) return res.status(404).json({ error: 'Получатель не найден.' });
         const blocked = await blockedBetween(req.userId, targetId);
@@ -1408,13 +1431,33 @@ wss.on('connection', ws => {
                 const targetId = String(data.toUserId || '');
                 const callId = clean(data.callId, 120);
                 if (!targetId || !callId || !data.offer || targetId === userId) return;
+                if (targetId === SUPPORT_ID || userId === SUPPORT_ID) {
+                    send(ws,{type:'call_error',callId,error:'В поддержку нельзя звонить.'});return;
+                }
+                const target = await getUser(targetId);
+                if (!target) {send(ws,{type:'call_error',callId,error:'Пользователь не найден.'});return;}
+                const policy=target.call_privacy||'everyone';
+                // A chat can be auto-created when opening a profile; this alone is not consent.
+                // 'contacts' here means people to whom the recipient has written at least once.
+                let isContact = false;
+                if (policy === 'contacts') {
+                    const priorConversation = await getDirectConversation(userId, targetId);
+                    if (priorConversation) {
+                        const previousReply = await pool.query(
+                          'SELECT 1 FROM messages WHERE conversation_id=$1 AND sender_id=$2 AND deleted_at IS NULL LIMIT 1',
+                          [priorConversation, targetId]);
+                        isContact = Boolean(previousReply.rowCount);
+                    }
+                }
+                if (policy==='nobody'||(policy==='contacts'&&!isContact)) {
+                    send(ws,{type:'call_error',callId,error:'Этот пользователь ограничил входящие звонки.'});return;
+                }
                 const blocked = await blockedBetween(userId, targetId);
                 if (blocked.a_blocks_b || blocked.b_blocks_a) {
                     send(ws, { type: 'call_error', callId, error: 'Нельзя позвонить этому пользователю.' });
                     return;
                 }
-                const target = await getUser(targetId);
-                if (!target || !isOnline(targetId)) {
+                if (!isOnline(targetId)) {
                     send(ws, { type: 'call_unavailable', callId, toUserId: targetId, error: 'Пользователь сейчас не в сети.' });
                     return;
                 }
@@ -1576,6 +1619,11 @@ async function init() {
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE');
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_visible BOOLEAN NOT NULL DEFAULT FALSE');
     await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS official_number TEXT UNIQUE');
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS call_privacy TEXT NOT NULL DEFAULT 'everyone'");
+    await pool.query(`CREATE TABLE IF NOT EXISTS message_hidden_for (
+      message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(message_id,user_id))`);
     await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS users_official_number_idx ON users(official_number) WHERE official_number IS NOT NULL');
     await pool.query(`CREATE TABLE IF NOT EXISTS official_number_requests (
         id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
