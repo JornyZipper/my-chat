@@ -25,7 +25,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 // No hardcoded JWT key: missing JWT_SECRET uses a temporary random key, invalidating sessions on restart.
 const JWT_SECRET = (process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32)
     ? process.env.JWT_SECRET : crypto.randomBytes(32).toString('hex');
-const APP_URL = (process.env.APP_URL || '').replace(/\/$/, '');
+const APP_URL = (String(process.env.APP_URL || '').trim() || 'https://my-chat-ucw4.onrender.com').replace(/\/+$/, '');
 const REQUIRE_EMAIL_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
 const VERIFIED_USERNAME = (process.env.VERIFIED_USERNAME || 'Z1pperJ').toLowerCase();
 const VERIFIED_CLAIM_CODE = process.env.VERIFIED_CLAIM_CODE || '';
@@ -59,6 +59,11 @@ const wsUsers = new WeakMap();
 function id() { return crypto.randomUUID(); }
 function norm(value) { return String(value || '').trim().toLowerCase(); }
 function clean(value, max) { return String(value || '').trim().slice(0, max); }
+// MIME types are sent in HTTP headers and must be ASCII tokens, never arbitrary Unicode.
+function safeMediaMime(value, fallback = 'application/octet-stream') {
+    const mime = String(value || '').trim();
+    return /^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+$/.test(mime) ? mime : fallback;
+}
 function validUsername(value) {
     const n = clean(value, 24);
     return n.length >= 2 && n.length <= 24 && /^[\p{L}\p{N}_.-]+$/u.test(n);
@@ -1028,7 +1033,8 @@ app.delete('/api/profile/avatar', authMiddleware, async (req, res) => {
 app.get('/api/avatar/:userId', async (req, res) => {
     const { rows } = await pool.query('SELECT avatar_data,avatar_mime FROM users WHERE id=$1', [req.params.userId]);
     if (!rows[0]?.avatar_data) return res.status(404).end();
-    res.set('Content-Type', rows[0].avatar_mime || 'image/jpeg');
+    res.set('Content-Type', safeMediaMime(rows[0].avatar_mime, 'image/jpeg'));
+    res.set('X-Content-Type-Options', 'nosniff');
     res.set('Cache-Control', 'public, max-age=300');
     res.send(rows[0].avatar_data);
 });
@@ -1222,7 +1228,8 @@ app.get('/api/media/:id', async (req, res) => {
             [req.params.id, mediaUserId]
         );
         if (!rows[0]) return res.status(404).end();
-        res.set('Content-Type', rows[0].mime_type);
+        res.set('Content-Type', safeMediaMime(rows[0].mime_type));
+        res.set('X-Content-Type-Options', 'nosniff');
         // Safe ASCII-only header: Unicode filename remains in attachment JSON metadata.
         // Avoid Node/Electron ByteString errors for files named e.g. "изображение.png".
         res.set('Content-Disposition', 'inline');
